@@ -6,7 +6,6 @@ import numpy as np
 import requests
 import json
 
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from opmat import OpMat
@@ -15,11 +14,9 @@ STACK_TOLERANCE = 1.0
 screen_width = 700
 screen_height = 700
 
-
 FOVY = 51.0
 ZNEAR = 0.01
 ZFAR = 950.0
-
 
 EYE_X = 0.0
 EYE_Y = 0.0
@@ -31,10 +28,8 @@ UP_X = 0.0
 UP_Y = 1.0
 UP_Z = 0.0
 
-
 dimBoard = 250.0
 zonaDescarga = 50.0
-total_lanes = 5  # Número de carriles
 margin = 20.0    # Margen en unidades
 
 class SimulationState:
@@ -53,7 +48,6 @@ class SimulationState:
       self.simulation_id = data["id"]
       self.robots_state = data["robots"]
       self.packages_state = data["packages"]
-
 
       if len(self.robots_state) < num_robots:
           print(f"Warning: Expected {num_robots} robots, but only {len(self.robots_state)} were initialized.")
@@ -80,14 +74,11 @@ class SimulationState:
        if self.simulation_id:
            requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
 
-
-
-
 def dibujarPlano():
     opmat = OpMat()
     opmat.push()
     
-    # Draw the main floor (board) within margins
+    # Dibujar el piso principal dentro de los márgenes
     vertices = [
         (-dimBoard + margin, -dimBoard + margin, 0),
         (dimBoard - margin, -dimBoard + margin, 0),
@@ -95,46 +86,36 @@ def dibujarPlano():
         (-dimBoard + margin, dimBoard - margin, 0)
     ]
     transformed_vertices = opmat.mult_points(vertices)
-    glColor3f(200/255, 200/255, 200/255)  # Light grey color for the floor
+    glColor3f(200/255, 200/255, 200/255)  # Color gris claro para el piso
     glBegin(GL_QUADS)
     for vertex in transformed_vertices:
         glVertex3f(*vertex)
     glEnd()
     
-    # Dibujar carriles verticales dentro del área de interacción con márgenes
-    lane_width = (2 * dimBoard - 2 * margin) / total_lanes  # Ajuste para márgenes
-    glColor3f(1.0, 1.0, 1.0)  # Color blanco para las líneas de los carriles
-    glLineWidth(2.0)
-    glBegin(GL_LINES)
-    for i in range(1, total_lanes):
-        x = -dimBoard + margin + i * lane_width
-        glVertex3f(x, -dimBoard + margin, 0.2)
-        glVertex3f(x, dimBoard - margin, 0.2)
-    glEnd()
-    
-    # Draw the drop-off zone within margins
+    # No dibujar carriles
+
+    # Dibujar la zona de descarga con un color base
     dropoff_vertices = [
-        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.5),  # Bottom left corner of drop-off zone
-        (dimBoard - margin, dimBoard - zonaDescarga - margin, 0.5),   # Bottom right corner
-        (dimBoard - margin, dimBoard - margin, 0.5),                  # Top right corner
-        (-dimBoard + margin, dimBoard - margin, 0.5)                  # Top left corner
+        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.5),  # Esquina inferior izquierda de la zona de descarga
+        (dimBoard - margin, dimBoard - zonaDescarga - margin, 0.5),   # Esquina inferior derecha
+        (dimBoard - margin, dimBoard - margin, 0.5),                  # Esquina superior derecha
+        (-dimBoard + margin, dimBoard - margin, 0.5)                  # Esquina superior izquierda
     ]
     transformed_dropoff_vertices = opmat.mult_points(dropoff_vertices)
-    glColor3f(169/255, 169/255, 169/255)  # Dark grey color for the drop-off zone (change to red or yellow for testing)
-    # Disable depth testing temporarily
+    glColor3f(0.5, 0.5, 0.5)  # Color gris medio para la zona de descarga
+    # Deshabilitar temporalmente el test de profundidad
     glDisable(GL_DEPTH_TEST)
 
-    # Draw the drop-off zone
+    # Dibujar la zona de descarga
     glBegin(GL_QUADS)
     for vertex in transformed_dropoff_vertices:
         glVertex3f(*vertex)
     glEnd()
 
-    # Re-enable depth testing
+    # Rehabilitar el test de profundidad
     glEnable(GL_DEPTH_TEST)
     
     opmat.pop()
-
 
 def dibujar_robot(robot_state):
    opmat = OpMat()
@@ -148,7 +129,6 @@ def dibujar_robot(robot_state):
    dibujar_llantas_robot(opmat)
    opmat.pop()
 
-
 def dibujar_robot_body(opmat):
    vertices = [
        (-40, -20, -15),
@@ -161,9 +141,7 @@ def dibujar_robot_body(opmat):
        (-40, 20, 15)
    ]
 
-
    transformed_vertices = opmat.mult_points(vertices)
-
 
    edges = [
        (0,1), (1,2), (2,3), (3,0),
@@ -171,14 +149,12 @@ def dibujar_robot_body(opmat):
        (0,4), (1,5), (2,6), (3,7)
    ]
 
-
-   glColor3f(30/255, 68/255, 168/255)
+   glColor3f(30/255, 68/255, 168/255)  # Color azul para los robots
    glBegin(GL_LINES)
    for edge in edges:
        for vertex in edge:
            glVertex3f(*transformed_vertices[vertex])
    glEnd()
-
 
 def dibujar_llantas_robot(opmat):
    posiciones_llantas = [
@@ -188,12 +164,11 @@ def dibujar_llantas_robot(opmat):
        (-35, -20, -15),
    ]
 
-
    for pos in posiciones_llantas:
        opmat.push()
        opmat.translate(pos[0], pos[1], pos[2])
        opmat.rotate(90, 0, 1, 0)
-       glColor3f(52/255, 51/255, 51/255)
+       glColor3f(52/255, 51/255, 51/255)  # Color gris oscuro para las llantas
        glBegin(GL_LINE_LOOP)
        for i in range(20):
            theta = 2.0 * np.pi * i / 20
@@ -202,10 +177,6 @@ def dibujar_llantas_robot(opmat):
            glVertex3f(x, y, 0)
        glEnd()
        opmat.pop()
-
-
-def check_full_stack(stack_index, robot_state):
-    return robot_state["num_boxes_in_stacks"][stack_index] >= 5
 
 def dibujar_caja(package_state, color_override=None):
     opmat = OpMat()
@@ -238,11 +209,11 @@ def dibujar_caja_body(opmat, color_override=None):
         (0,4), (1,5), (2,6), (3,7)
     ]
 
-    # Use color_override if provided; otherwise, default color
+    # Usar color_override si se proporciona; de lo contrario, color por defecto
     if color_override:
         glColor3f(*color_override)
     else:
-        glColor3f(187/255, 156/255, 110/255)  # Default box color
+        glColor3f(187/255, 156/255, 110/255)  # Color por defecto de las cajas
     
     glBegin(GL_LINES)
     for edge in edges:
@@ -250,7 +221,7 @@ def dibujar_caja_body(opmat, color_override=None):
             glVertex3f(*transformed_vertices[vertex])
     glEnd()
 
-def Init(simulation):  # Add simulation as parameter
+def Init(simulation):  # Agregar simulation como parámetro
    screen = pygame.display.set_mode(
        (screen_width, screen_height), DOUBLEBUF | OPENGL)
    pygame.display.set_caption("OpenGL: Robots")
@@ -286,37 +257,39 @@ def display(simulation):
     for package in simulation.packages_state:
         pos = package["position"]
         x, y = pos[0], pos[1]
-        # Round positions based on a tolerance to group into stacks
+        # Redondear posiciones según una tolerancia para agrupar en pilas
         stack_key = (round(x / STACK_TOLERANCE) * STACK_TOLERANCE,
                      round(y / STACK_TOLERANCE) * STACK_TOLERANCE)
         if stack_key not in stacks:
             stacks[stack_key] = []
         stacks[stack_key].append(package)
 
-    # Determine which stacks are full
-    full_stacks_keys = {key for key, packages in stacks.items() if len(packages) >= 5}
-
-    # Draw packages
+    # Determinar el estado de las pilas
+    stack_colors = {}
     for key, packages in stacks.items():
-        is_full_stack = key in full_stacks_keys
+        if len(packages) >= 5:
+            stack_colors[key] = (1.0, 0.0, 0.0)  # Rojo para pilas llenas
+        elif len(packages) > 0:
+            stack_colors[key] = (0.0, 1.0, 0.0)  # Verde para pilas disponibles
+
+    # Dibujar cajas con color basado en el estado de la pila
+    for key, packages in stacks.items():
+        is_full_stack = len(packages) >= 5
         for package in packages:
             if is_full_stack:
-                # Draw full stacks in red
-                dibujar_caja(package, color_override=(1.0, 0.0, 0.0))  # Red color
+                # Dibujar pilas llenas en rojo
+                dibujar_caja(package, color_override=(1.0, 0.0, 0.0))  # Color rojo
             else:
-                # Default color for other packages
-                dibujar_caja(package)
-
+                # Dibujar pilas disponibles en verde
+                dibujar_caja(package, color_override=(0.0, 1.0, 0.0))  # Color verde
 
 def main():
     pygame.init()
     simulation = SimulationState()
     done = False
-    Init(simulation)  # Pass simulation to Init
-
+    Init(simulation)  # Pasar simulation a Init
 
     clock = pygame.time.Clock()
-
 
     try:
        while not done:
@@ -324,15 +297,13 @@ def main():
                if event.type == pygame.QUIT:
                    done = True
 
-
-           display(simulation)  # Pass simulation to display
+           display(simulation)  # Pasar simulation a display
            pygame.display.flip()
-           clock.tick(50)  # Increase to smooth out movement
+           clock.tick(50)  # Aumentar para suavizar el movimiento
 
     finally:
        simulation.cleanup()
        pygame.quit()
-
 
 if __name__ == '__main__':
    main()
