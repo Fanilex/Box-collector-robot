@@ -1,4 +1,4 @@
-include("pacman.jl")
+include("agents.jl")
 using Genie, Genie.Renderer.Json, Genie.Requests, HTTP
 using UUIDs
 
