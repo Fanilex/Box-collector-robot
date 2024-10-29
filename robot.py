@@ -1,34 +1,31 @@
 import pygame
+from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
 import numpy as np
+import requests
+
+pygame.init()
+
+URL_BASE = "http://localhost:8000"
+r = requests.post(URL_BASE + "/simulations", allow_redirects=False)
+datos = r.json()
+LOCATION = datos["Location"]
+
+screen_width = 900
+screen_height = 600
+
+# Variables para la posición y rotación del carrito
+car_pos_x = datos["agents"][0]["pos"][0] * 20 - 160  # Posición inicial
+car_pos_y = datos["agents"][0]["pos"][1] * 20 - 160  # Posición inicial
+rotation_angle = 0
+move_speed = 5
+rotation_speed = 5  # Velocidad de rotación gradual en grados por frame
 
 X_MIN = -450
 X_MAX = 450
-Y_MIN = -300
-Y_MAX = 300
-
-num_robots = 5
-robot_spacing = 200
-total_width = (num_robots - 1) * robot_spacing 
-car_positions_x = [-(total_width / 2) + i * robot_spacing for i in range(num_robots)]
-car_pos_y = 0 
-rotation_angle = 0
-
-def Axis():
-    glShadeModel(GL_FLAT)
-    glLineWidth(3.0)
-    glColor3f(1.0, 0.0, 0.0)
-    glBegin(GL_LINES)
-    glVertex2f(X_MIN, 0.0)
-    glVertex2f(X_MAX, 0.0)
-    glEnd()
-    glColor3f(0.0, 1.0, 0.0)
-    glBegin(GL_LINES)
-    glVertex2f(0.0, Y_MIN)
-    glVertex2f(0.0, Y_MAX)
-    glEnd()
-    glLineWidth(1.0)
+Y_MIN = -270
+Y_MAX = 270
 
 def draw_circle(x, y, radius):
     glBegin(GL_LINE_LOOP)
@@ -37,9 +34,9 @@ def draw_circle(x, y, radius):
         glVertex2f(np.cos(angle) * radius + x, np.sin(angle) * radius + y)
     glEnd()
 
-def draw_robot(x, y, rotation_angle):
+def draw_cart_top_view():
     glPushMatrix()
-    glTranslatef(x, y, 0)
+    glTranslatef(car_pos_x, car_pos_y, 0)
     glRotatef(rotation_angle, 0, 0, 1)
 
     glColor3f(0.0, 0.0, 1.0)
@@ -58,11 +55,40 @@ def draw_robot(x, y, rotation_angle):
 
     glPopMatrix()
 
-def draw_all_robots():
-    for i in range(num_robots):
-        draw_robot(car_positions_x[i], car_pos_y, rotation_angle)
+def update_position():
+    global car_pos_x, car_pos_y
+    # Realiza una solicitud para obtener la posición actualizada del agente
+    response = requests.get(URL_BASE + LOCATION)
+    datos = response.json()
+    ghost = datos["agents"][0]
+    car_pos_x = ghost["pos"][0] * 20 - 160
+    car_pos_y = ghost["pos"][1] * 20 - 160
 
-def update_positions(new_y):
-    global car_pos_y
-    if Y_MIN < new_y < Y_MAX:
-        car_pos_y = new_y
+def init():
+    screen = pygame.display.set_mode((screen_width, screen_height), DOUBLEBUF | OPENGL)
+    pygame.display.set_caption("OpenGL: Carrito 2D (Vista desde arriba)")
+
+    glMatrixMode(GL_PROJECTION)
+    glLoadIdentity()
+    gluOrtho2D(-450, 450, -300, 300)
+    glMatrixMode(GL_MODELVIEW)
+    glLoadIdentity()
+    glClearColor(0, 0, 0, 0)
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+    glShadeModel(GL_FLAT)
+
+init()
+
+done = False
+while not done:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            done = True
+
+    update_position()  # Actualiza la posición del carrito
+    glClear(GL_COLOR_BUFFER_BIT)
+    draw_cart_top_view()
+    pygame.display.flip()
+    pygame.time.wait(100)
+
+pygame.quit()

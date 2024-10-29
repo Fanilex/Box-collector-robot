@@ -20,12 +20,6 @@ function initialize_model()
    space = GridSpace((50, 50); periodic = false, metric = :manhattan)
    model = StandardABM(Ghost, space; agent_step!)
 
-
-   # Add 5 agents horizontally aligned at positions (x, 3) with different x values
-   for i in 1:5
-       add_agent!(Ghost, pos=(3 + i * 2, 3), model)
-   end
-
    return model
 end
 
