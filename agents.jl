@@ -3,7 +3,6 @@ using CairoMakie
 
 
 @agent struct Ghost(GridAgent{2})
-    id::Int
     type::String = "Ghost"
 end
 
@@ -26,14 +25,6 @@ function initialize_model()
    for i in 1:5
        add_agent!(Ghost, pos=(3 + i * 2, 3), model)
    end
-
-   robots = [
-        Robot(1, v1)
-        Robot(2, v2)
-        Robot(3, v3)
-        Robot(4, v4)
-        Robot(5, v5)
-   ]
 
    return model
 end
