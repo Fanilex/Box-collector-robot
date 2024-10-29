@@ -3,17 +3,9 @@ using CairoMakie
 
 
 @agent struct Ghost(GridAgent{2})
-   type::String = "Ghost"
+    id::Int
+    type::String = "Ghost"
 end
-
-
-movimientos = [
-   (0, 1), 
-   (1, 0), 
-   (0, -1),
-   (-1, 0) 
-]
-
 
 function agent_step!(agent, model)
   
@@ -35,6 +27,13 @@ function initialize_model()
        add_agent!(Ghost, pos=(3 + i * 2, 3), model)
    end
 
+   robots = [
+        Robots(1, v1)
+        Robots(2, v2)
+        Robots(3, v3)
+        Robots(4, v4)
+        Robots(5, v5)
+   ]
 
    return model
 end
