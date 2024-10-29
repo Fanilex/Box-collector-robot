@@ -5,9 +5,20 @@ using CairoMakie
     type::String = "Ghost"
 end
 
+movimientos = [
+    (0, 1),  
+    (1, 0),  
+    (0, -1), 
+    (-1, 0)  
+]
+
 function agent_step!(agent, model)
     
-    randomwalk!(agent, model)
+    #randomwalk!(agent, model)
+    #move = rand(movimientos_v)
+    (dx, dy) = (0, 1)
+    new_pos = (agent.pos[1] + dx, agent.pos[2] + dy) 
+    move_agent!(agent, new_pos, model)
 end
 
 function initialize_model()
