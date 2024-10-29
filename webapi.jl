@@ -2,23 +2,21 @@ include("agents.jl")
 using Genie, Genie.Renderer.Json, Genie.Requests, HTTP
 using UUIDs
 
-
 instances = Dict()
 
-
 route("/simulations", method = POST) do
-   payload = jsonpayload()
+    payload = jsonpayload()
 
-   model = initialize_model()
-   id = string(uuid1())
-   instances[id] = model
+    model = initialize_model()
+    id = string(uuid1())
+    instances[id] = model
 
-   agents = []
-   for ghost in allagents(model)
-       push!(agents, ghost)
-   end
+    agents = []
+    for ghost in allagents(model)
+        push!(agents, ghost)
+    end
 
-   json(Dict("Location" => "/simulations/$id", "agents" => agents))
+    json(Dict("Location" => "/simulations/$id", "agents" => agents))
 end
 
 route("/simulations/:id") do
@@ -30,7 +28,8 @@ route("/simulations/:id") do
         push!(agents, ghost)
     end
     
-    json(Dict("agents" => agents))
+    boxes = generate_random_boxes(5)  # Generate 5 random boxes
+    json(Dict("agents" => agents, "boxes" => boxes))  # Include boxes in the response
 end
 
 Genie.config.run_as_server = true

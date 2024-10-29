@@ -16,8 +16,12 @@ screen_width = 900
 screen_height = 600
 
 # Variables para la posición y rotación del carrito
-car_pos_x = datos["agents"][0]["pos"][0] * 20 - 160  # Posición inicial
-car_pos_y = datos["agents"][0]["pos"][1] * 20 - 160  # Posición inicial
+if datos["agents"]:
+    car_pos_x = datos["agents"][0]["pos"][0] * 20 - 160  # Posición inicial
+    car_pos_y = datos["agents"][0]["pos"][1] * 20 - 160  # Posición inicial
+else:
+    car_pos_x = 0  # Default position if no agents are available
+    car_pos_y = 0  # Default position if no agents are available
 rotation_angle = 0
 move_speed = 5
 rotation_speed = 5  # Velocidad de rotación gradual en grados por frame
@@ -56,13 +60,31 @@ def draw_cart_top_view():
     glPopMatrix()
 
 def update_position():
-    global car_pos_x, car_pos_y
-    # Realiza una solicitud para obtener la posición actualizada del agente
+    global car_pos_x, car_pos_y, boxes
     response = requests.get(URL_BASE + LOCATION)
     datos = response.json()
-    ghost = datos["agents"][0]
-    car_pos_x = ghost["pos"][0] * 20 - 160
-    car_pos_y = ghost["pos"][1] * 20 - 160
+    
+    # Check if agents list is not empty
+    if datos["agents"]:
+        ghost = datos["agents"][0]
+        car_pos_x = ghost["pos"][0] * 20 - 160
+        car_pos_y = ghost["pos"][1] * 20 - 160
+    else:
+        car_pos_x = 0  # Default position if no agents are available
+        car_pos_y = 0  # Default position if no agents are available
+    
+    boxes = datos["boxes"]
+
+def draw_boxes():
+    glColor3f(1.0, 0.0, 0.0)
+    for box in boxes:
+        x, y = box
+        glBegin(GL_QUADS)
+        glVertex2f(x - 10, y - 10)
+        glVertex2f(x + 10, y - 10)
+        glVertex2f(x + 10, y + 10)
+        glVertex2f(x - 10, y + 10)
+        glEnd()
 
 def init():
     screen = pygame.display.set_mode((screen_width, screen_height), DOUBLEBUF | OPENGL)
@@ -85,9 +107,10 @@ while not done:
         if event.type == pygame.QUIT:
             done = True
 
-    update_position()  # Actualiza la posición del carrito
+    update_position()
     glClear(GL_COLOR_BUFFER_BIT)
     draw_cart_top_view()
+    draw_boxes()
     pygame.display.flip()
     pygame.time.wait(100)
 
