@@ -28,11 +28,11 @@ function initialize_model()
    end
 
    robots = [
-        Robots(1, v1)
-        Robots(2, v2)
-        Robots(3, v3)
-        Robots(4, v4)
-        Robots(5, v5)
+        Robot(1, v1)
+        Robot(2, v2)
+        Robot(3, v3)
+        Robot(4, v4)
+        Robot(5, v5)
    ]
 
    return model
