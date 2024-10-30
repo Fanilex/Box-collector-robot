@@ -36,27 +36,27 @@ def draw_cart_top_view(x, y, rotation_angle, cargando):
     # Cuerpo del carro
     glColor3f(0.0, 0.0, 1.0)  # Azul
     glBegin(GL_QUADS)
-    glVertex2f(-25, -15)
-    glVertex2f(25, -15)
-    glVertex2f(25, 15)
-    glVertex2f(-25, 15)
+    glVertex2f(-15, -10)
+    glVertex2f(15, -10)
+    glVertex2f(15, 10)
+    glVertex2f(-15, 10)
     glEnd()
 
     # Ruedas
     glColor3f(0.0, 1.0, 0.0)  # Verde
-    draw_circle(-25, 20, 10)
-    draw_circle(25, 20, 10)
-    draw_circle(-25, -20, 10)
-    draw_circle(25, -20, 10)
+    draw_circle(-15, 15, 5)
+    draw_circle(15, 15, 5)
+    draw_circle(-15, -15, 5)
+    draw_circle(15, -15, 5)
 
     # Si está cargando, dibujar una caja encima
     if cargando:
         glColor3f(1.0, 0.5, 0.0)  # Naranja
         glBegin(GL_QUADS)
-        glVertex2f(-15, 25)
-        glVertex2f(15, 25)
-        glVertex2f(15, 45)
-        glVertex2f(-15, 45)
+        glVertex2f(-10, 10)
+        glVertex2f(10, 10)
+        glVertex2f(10, 25)
+        glVertex2f(-10, 25)
         glEnd()
 
     glPopMatrix()
@@ -70,7 +70,7 @@ def recibir_datos():
     print("Conectado al backend en Julia")
     buffer = ""
     while True:
-        data = conn.recv(1024).decode()
+        data = conn.recv(4096).decode()
         if not data:
             break
         buffer += data
@@ -100,28 +100,40 @@ def dibujar_entorno():
     glVertex2f(0, HEIGHT)
     glEnd()
 
+    # Dibujar líneas entre carriles
+    num_carriles = 5
+    ancho_carril = WIDTH / num_carriles
+    glColor3f(0.0, 0.0, 0.0)  # Negro
+    glLineWidth(2)
+    for i in range(1, num_carriles):
+        x = i * ancho_carril
+        glBegin(GL_LINES)
+        glVertex2f(x, 0)
+        glVertex2f(x, HEIGHT)
+        glEnd()
+
     # Dibujar cajas
     for caja in estado.get("cajas", []):
         if not caja["recogida"]:
             x, y = caja["posicion"]
-            x = x * 5
-            y = y * 5
+            x = (x / (ancho_carril * num_carriles)) * WIDTH
+            y = (y / 100) * HEIGHT
             glPushMatrix()
             glTranslatef(x, y, 0)
             glColor3f(1.0, 0.0, 0.0)  # Rojo
             glBegin(GL_QUADS)
-            glVertex2f(-10, -10)
-            glVertex2f(10, -10)
-            glVertex2f(10, 10)
-            glVertex2f(-10, 10)
+            glVertex2f(-5, -5)
+            glVertex2f(5, -5)
+            glVertex2f(5, 5)
+            glVertex2f(-5, 5)
             glEnd()
             glPopMatrix()
 
     # Dibujar robots
     for robot in estado.get("robots", []):
         x, y = robot["posicion"]
-        x = x * 5
-        y = y * 5
+        x = (x / (ancho_carril * num_carriles)) * WIDTH
+        y = (y / 100) * HEIGHT
         cargando = robot["cargando"]
         # Calculamos el ángulo de rotación si es necesario
         rotation_angle = 0  # Por ahora lo dejamos en 0
@@ -143,7 +155,7 @@ def main():
     clock = pygame.time.Clock()
     running = True
     while running:
-        clock.tick(30)  # FPS
+        clock.tick(60)  # FPS
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False

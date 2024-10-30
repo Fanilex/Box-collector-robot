@@ -8,7 +8,7 @@ using Random
 num_robots = 5
 num_cajas_por_carril = 20
 num_carriles = num_robots
-ancho_carril = 30  # Ancho de cada carril
+ancho_carril = 160  # Ancho de cada carril
 altura_grilla = 100  # Altura de la grilla
 
 # Zona de entrega (parte superior de la pantalla)
