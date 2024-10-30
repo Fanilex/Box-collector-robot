@@ -41,9 +41,9 @@ for i in 1:num_robots
     
     # Generar cajas en posiciones aleatorias dentro del carril
     for j in 1:num_cajas_por_carril
-        x = x_pos  # Mantenerse en el centro del carril
-        y = rand(1:zona_entrega_y - 1)
-        push!(cajas, Caja((i - 1) * num_cajas_por_carril + j, (x, y), false))
+      x = rand(x_pos-50:10:x_pos+50)
+      y = rand(1:zona_entrega_y - 1)
+      push!(cajas, Caja((i - 1) * num_cajas_por_carril + j, (x, y), false))
     end
 end
 
