@@ -36,18 +36,18 @@ def draw_cart_top_view(x, y, rotation_angle, cargando):
     # Cuerpo del carro
     glColor3f(0.0, 0.0, 1.0)  # Azul
     glBegin(GL_QUADS)
-    glVertex2f(-35, -25)
-    glVertex2f(35, -25)
-    glVertex2f(35, 25)
-    glVertex2f(-35, 25)
+    glVertex2f(-25, -15)
+    glVertex2f(25, -15)
+    glVertex2f(25, 15)
+    glVertex2f(-25, 15)
     glEnd()
 
     # Ruedas
     glColor3f(0.0, 1.0, 0.0)  # Verde
-    draw_circle(-35, 20, 10)
-    draw_circle(35, 20, 10)
-    draw_circle(-35, -20, 10)
-    draw_circle(35, -20, 10)
+    draw_circle(-25, 20, 10)
+    draw_circle(25, 20, 10)
+    draw_circle(-25, -20, 10)
+    draw_circle(25, -20, 10)
 
     # Si está cargando, dibujar una caja encima
     if cargando:
