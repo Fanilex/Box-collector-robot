@@ -3,6 +3,7 @@ using Genie, Genie.Renderer.Json, Genie.Requests, HTTP
 using UUIDs
 
 instances = Dict()
+boxes = generate_random_boxes(5)  # Generate 5 random boxes once
 
 route("/simulations", method = POST) do
     payload = jsonpayload()
@@ -28,8 +29,7 @@ route("/simulations/:id") do
         push!(agents, ghost)
     end
     
-    boxes = generate_random_boxes(5)  # Generate 5 random boxes
-    json(Dict("agents" => agents, "boxes" => boxes))  # Include boxes in the response
+    json(Dict("agents" => agents, "boxes" => boxes))  # Include static boxes in the response
 end
 
 Genie.config.run_as_server = true
