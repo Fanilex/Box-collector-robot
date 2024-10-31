@@ -1,110 +1,196 @@
+import socket
+import json
+import threading
 import pygame
 from pygame.locals import *
 from OpenGL.GL import *
 from OpenGL.GLU import *
-import numpy as np
-import requests
+import math
 
-pygame.init()
 
-URL_BASE = "http://localhost:8000"
-r = requests.post(URL_BASE + "/simulations", allow_redirects=False)
-datos = r.json()
-LOCATION = datos["Location"]
+WIDTH, HEIGHT = 800, 600
 
-screen_width = 900
-screen_height = 600
 
-# Variables para la posición y rotación del carrito
-car_pos_x = datos["agents"][0]["pos"][0] * 20 - 160  # Posición inicial
-car_pos_y = datos["agents"][0]["pos"][1] * 20 - 160  # Posición inicial
-rotation_angle = 0
-move_speed = 5
-rotation_speed = 5  # Velocidad de rotación gradual en grados por frame
+estado = {"robots": [], "cajas": [], "delivered_cajas": []}
 
-X_MIN = -500
-X_MAX = 500
-Y_MIN = -500
-Y_MAX = 500
 
-def Axis():
-    glShadeModel(GL_FLAT)
-    glLineWidth(3.0)
-    glColor3f(1.0, 0.0, 0.0)
-    glBegin(GL_LINES)
-    glVertex2f(X_MIN, 0.0)
-    glVertex2f(X_MAX, 0.0)
-    glEnd()
-    glColor3f(0.0, 1.0, 0.0)
-    glBegin(GL_LINES)
-    glVertex2f(0.0, Y_MIN)
-    glVertex2f(0.0, Y_MAX)
-    glEnd()
-    glLineWidth(1.0)
+screen = None
+
 
 def draw_circle(x, y, radius):
-    glBegin(GL_LINE_LOOP)
-    for i in range(100):
-        angle = 2 * np.pi * i / 100
-        glVertex2f(np.cos(angle) * radius + x, np.sin(angle) * radius + y)
-    glEnd()
+   segments = 32
+   glBegin(GL_TRIANGLE_FAN)
+   for i in range(segments + 1):
+       theta = 2.0 * math.pi * i / segments
+       dx = radius * math.cos(theta)
+       dy = radius * math.sin(theta)
+       glVertex2f(x + dx, y + dy)
+   glEnd()
 
-def draw_cart_top_view():
-    glPushMatrix()
-    glTranslatef(car_pos_x, car_pos_y, 0)
-    glRotatef(rotation_angle, 0, 0, 1)
 
-    glColor3f(0.0, 0.0, 1.0)
-    glBegin(GL_QUADS)
-    glVertex2f(-35, -25)
-    glVertex2f(35, -25)
-    glVertex2f(35, 25)
-    glVertex2f(-35, 25)
-    glEnd()
+def draw_cart_top_view(x, y, rotation_angle, cargando):
+   glPushMatrix()
+   glTranslatef(x, y, 0)
+   glRotatef(rotation_angle, 0, 0, 1)
 
-    glColor3f(0.0, 1.0, 0.0)
-    draw_circle(-35, 20, 10)
-    draw_circle(20, 20, 10)
-    draw_circle(-35, -20, 10)
-    draw_circle(20, -20, 10)
 
-    glPopMatrix()
+   glColor3f(0.0, 0.0, 1.0)  # Azul
+   glBegin(GL_QUADS)
+   glVertex2f(-15, -10)
+   glVertex2f(15, -10)
+   glVertex2f(15, 10)
+   glVertex2f(-15, 10)
+   glEnd()
 
-def update_position():
-    global car_pos_x, car_pos_y
-    # Realiza una solicitud para obtener la posición actualizada del agente
-    response = requests.get(URL_BASE + LOCATION)
-    datos = response.json()
-    ghost = datos["agents"][0]
-    car_pos_x = ghost["pos"][0] * 20 - 160
-    car_pos_y = ghost["pos"][1] * 20 - 160
 
-def init():
-    screen = pygame.display.set_mode((screen_width, screen_height), DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("OpenGL: Carrito 2D (Vista desde arriba)")
+   glColor3f(0.0, 1.0, 0.0)  # Verde
+   draw_circle(-15, 15, 5)
+   draw_circle(15, 15, 5)
+   draw_circle(-15, -15, 5)
+   draw_circle(15, -15, 5)
 
-    glMatrixMode(GL_PROJECTION)
-    glLoadIdentity()
-    gluOrtho2D(-450, 450, -300, 300)
-    glMatrixMode(GL_MODELVIEW)
-    glLoadIdentity()
-    glClearColor(0, 0, 0, 0)
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-    glShadeModel(GL_FLAT)
 
-init()
+   # Si está cargando, dibujar una caja encima
+   if cargando:
+       glColor3f(1.0, 0.5, 0.0)  # Naranja
+       glBegin(GL_QUADS)
+       glVertex2f(-10, 10)
+       glVertex2f(10, 10)
+       glVertex2f(10, 25)
+       glVertex2f(-10, 25)
+       glEnd()
 
-done = False
-while not done:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
 
-    update_position()  # Actualiza la posición del carrito
-    glClear(GL_COLOR_BUFFER_BIT)
-    Axis()
-    draw_cart_top_view()
-    pygame.display.flip()
-    pygame.time.wait(100)
+   glPopMatrix()
 
-pygame.quit()
+
+def recibir_datos():
+   global estado
+   server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+   server.bind(('localhost', 5555))
+   server.listen(1)
+   conn, addr = server.accept()
+   print("Conectado al backend en Julia")
+   buffer = ""
+   while True:
+       data = conn.recv(4096).decode()
+       if not data:
+           break
+       buffer += data
+       while "\n" in buffer:
+           mensaje, buffer = buffer.split("\n", 1)
+           estado = json.loads(mensaje)
+   conn.close()
+
+
+def init_gl():
+   glClearColor(1.0, 1.0, 1.0, 1.0)  # Fondo blanco
+   glViewport(0, 0, WIDTH, HEIGHT)
+   glMatrixMode(GL_PROJECTION)
+   glLoadIdentity()
+   gluOrtho2D(0, WIDTH, 0, HEIGHT)
+   glMatrixMode(GL_MODELVIEW)
+
+
+def dibujar_entorno():
+   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+   glLoadIdentity()
+
+
+   # Dibujar zona de entrega
+   glColor3f(0.0, 1.0, 0.0)  # Verde
+   glBegin(GL_QUADS)
+   glVertex2f(0, HEIGHT - 100)
+   glVertex2f(WIDTH, HEIGHT - 100)
+   glVertex2f(WIDTH, HEIGHT)
+   glVertex2f(0, HEIGHT)
+   glEnd()
+
+
+   # Dibujar líneas entre carriles
+   num_carriles = 5
+   ancho_carril = WIDTH / num_carriles
+   glColor3f(0.0, 0.0, 0.0)  # Negro
+   glLineWidth(2)
+   for i in range(1, num_carriles):
+       x = i * ancho_carril
+       glBegin(GL_LINES)
+       glVertex2f(x, 0)
+       glVertex2f(x, HEIGHT)
+       glEnd()
+
+
+   # Dibujar cajas en el grid
+   for caja in estado.get("cajas", []):
+       if not caja["recogida"]:
+           x, y = caja["posicion"]
+           x = (x / (ancho_carril * num_carriles)) * WIDTH
+           y = (y / 100) * HEIGHT
+           glPushMatrix()
+           glTranslatef(x, y, 0)
+           glColor3f(1.0, 0.0, 0.0)  # Rojo
+           glBegin(GL_QUADS)
+           glVertex2f(-5, -5)
+           glVertex2f(5, -5)
+           glVertex2f(5, 5)
+           glVertex2f(-5, 5)
+           glEnd()
+           glPopMatrix()
+
+
+   # Dibujar cajas entregadas en la zona de entrega (color naranja)
+   for caja in estado.get("delivered_cajas", []):
+       x, y = caja["posicion"]
+       x = (x / (ancho_carril * num_carriles)) * WIDTH
+       y = (y / 100) * HEIGHT
+       glPushMatrix()
+       glTranslatef(x, y, 0)
+       glColor3f(1.0, 0.5, 0.0)  # Naranja
+       glBegin(GL_QUADS)
+       glVertex2f(-5, -5)
+       glVertex2f(5, -5)
+       glVertex2f(5, 5)
+       glVertex2f(-5, 5)
+       glEnd()
+       glPopMatrix()
+
+
+   # Dibujar robots
+   for robot in estado.get("robots", []):
+       x, y = robot["posicion"]
+       x = (x / (ancho_carril * num_carriles)) * WIDTH
+       y = (y / 100) * HEIGHT
+       cargando = robot["cargando"]
+       rotation_angle = 0
+       draw_cart_top_view(x, y, rotation_angle, cargando)
+
+
+   pygame.display.flip()
+
+
+def main():
+   pygame.init()
+   global screen
+   screen = pygame.display.set_mode((WIDTH, HEIGHT), DOUBLEBUF | OPENGL)
+   pygame.display.set_caption("Simulación de Robots")
+
+
+   init_gl()
+
+
+   threading.Thread(target=recibir_datos, daemon=True).start()
+
+
+   clock = pygame.time.Clock()
+   running = True
+   while running:
+       clock.tick(60)
+       for event in pygame.event.get():
+           if event.type == pygame.QUIT:
+               running = False
+       dibujar_entorno()
+   pygame.quit()
+
+
+if __name__ == "__main__":
+   main()
