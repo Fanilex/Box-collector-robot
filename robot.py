@@ -11,6 +11,7 @@ URL_BASE = "http://localhost:8000"
 r = requests.post(URL_BASE + "/simulations", allow_redirects=False)
 datos = r.json()
 LOCATION = datos["Location"]
+up(8000, "0.0.0.0")
 
 screen_width = 900
 screen_height = 600
