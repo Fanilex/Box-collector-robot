@@ -34,7 +34,7 @@ def draw_cart_top_view(x, y, rotation_angle, cargando):
    glRotatef(rotation_angle, 0, 0, 1)
 
 
-   glColor3f(0.0, 0.0, 1.0)  # Azul
+   glColor3f(30 / 255, 68 / 255, 168 / 255)  # Azul
    glBegin(GL_QUADS)
    glVertex2f(-15, -10)
    glVertex2f(15, -10)
@@ -43,7 +43,7 @@ def draw_cart_top_view(x, y, rotation_angle, cargando):
    glEnd()
 
 
-   glColor3f(0.0, 1.0, 0.0)  # Verde
+   glColor3f(52 / 255, 51 / 255, 51 / 255)  # Verde
    draw_circle(-15, 15, 5)
    draw_circle(15, 15, 5)
    draw_circle(-15, -15, 5)
@@ -52,7 +52,7 @@ def draw_cart_top_view(x, y, rotation_angle, cargando):
 
    # Si está cargando, dibujar una caja encima
    if cargando:
-       glColor3f(1.0, 0.5, 0.0)  # Naranja
+       glColor3f(187 / 255, 156 / 255, 110 / 255)  # Naranja
        glBegin(GL_QUADS)
        glVertex2f(-10, 10)
        glVertex2f(10, 10)
@@ -84,7 +84,7 @@ def recibir_datos():
 
 
 def init_gl():
-   glClearColor(1.0, 1.0, 1.0, 1.0)  # Fondo blanco
+   glClearColor(200 / 255, 200 / 255, 200 / 255, 1.0)  # Fondo blanco
    glViewport(0, 0, WIDTH, HEIGHT)
    glMatrixMode(GL_PROJECTION)
    glLoadIdentity()
@@ -98,7 +98,7 @@ def dibujar_entorno():
 
 
    # Dibujar zona de entrega
-   glColor3f(0.0, 1.0, 0.0)  # Verde
+   glColor3f(118 / 255, 132 / 255, 155 / 255)  # Verde
    glBegin(GL_QUADS)
    glVertex2f(0, HEIGHT - 100)
    glVertex2f(WIDTH, HEIGHT - 100)
@@ -110,7 +110,7 @@ def dibujar_entorno():
    # Dibujar líneas entre carriles
    num_carriles = 5
    ancho_carril = WIDTH / num_carriles
-   glColor3f(0.0, 0.0, 0.0)  # Negro
+   glColor3f(146 / 255, 142 / 255, 142 / 255)  # Negro
    glLineWidth(2)
    for i in range(1, num_carriles):
        x = i * ancho_carril
@@ -128,7 +128,7 @@ def dibujar_entorno():
            y = (y / 100) * HEIGHT
            glPushMatrix()
            glTranslatef(x, y, 0)
-           glColor3f(1.0, 0.0, 0.0)  # Rojo
+           glColor3f(187 / 255, 156 / 255, 110 / 255)  # Naranja
            glBegin(GL_QUADS)
            glVertex2f(-5, -5)
            glVertex2f(5, -5)
@@ -145,7 +145,7 @@ def dibujar_entorno():
        y = (y / 100) * HEIGHT
        glPushMatrix()
        glTranslatef(x, y, 0)
-       glColor3f(1.0, 0.5, 0.0)  # Naranja
+       glColor3f(187 / 255, 156 / 255, 110 / 255)  # Naranja
        glBegin(GL_QUADS)
        glVertex2f(-5, -5)
        glVertex2f(5, -5)
