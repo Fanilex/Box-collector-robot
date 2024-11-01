@@ -9,16 +9,18 @@ mutable struct Caja
 end
 
 function crearCaja(dimBoard::Float64, zonaDescarga::Float64)
-   x = rand(-dimBoard + 10:dimBoard - 10)
-   y = rand(-dimBoard + 10:dimBoard - 10)
+   min_coord = -dimBoard + 10
+   max_coord = dimBoard - 10
+   x = rand() * (max_coord - min_coord) + min_coord
+   y = rand() * (max_coord - min_coord) + min_coord
    # Evitar que las cajas se generen en la zona de descarga
    while x >= -dimBoard && x <= (-dimBoard + 2 * zonaDescarga) &&
          y >= -dimBoard && y <= (-dimBoard + 2 * zonaDescarga)
-       x = rand(-dimBoard + 10:dimBoard - 10)
-       y = rand(-dimBoard + 10:dimBoard - 10)
+       x = rand() * (max_coord - min_coord) + min_coord
+       y = rand() * (max_coord - min_coord) + min_coord
    end
    posicion = [x, y, 3.0]
-   angulo = rand() * 2.27
+   angulo = rand() * 2π
    estado_caja = "esperando"
    return Caja(posicion, angulo, estado_caja)
 end
@@ -29,4 +31,3 @@ function setPos(caja::Caja, pos::Vector{Float64}, an::Float64)
 end
 
 end
-
