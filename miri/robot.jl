@@ -69,9 +69,9 @@ end
 
 function eventHandler!(robot::Robot)
     if robot.actividad == "DROPPING_OFF"
-        # Dirección hacia la nueva zona de recolección en la esquina
+        # Cambiar la posición objetivo para la esquina superior izquierda
         target_x = -robot.dimBoard + robot.zonaDescarga
-        target_y = -robot.dimBoard + robot.zonaDescarga
+        target_y = robot.dimBoard - robot.zonaDescarga  # Cambia a la parte superior del tablero
         newDir = [target_x - robot.posicion[1], target_y - robot.posicion[2], 0.0]
         fctr = norm(newDir)
         newDir = newDir / fctr
@@ -79,9 +79,9 @@ function eventHandler!(robot::Robot)
         robot.actividad = "EN_ROUTE"
         robot.count = 0
     elseif robot.actividad == "EN_ROUTE"
-        # Verificar si el robot está dentro de la zona de recolección
+        # Verificar si el robot está dentro de la nueva zona de recolección en la esquina superior izquierda
         if robot.posicion[1] >= -robot.dimBoard && robot.posicion[1] <= (-robot.dimBoard + 2 * robot.zonaDescarga) &&
-           robot.posicion[2] >= -robot.dimBoard && robot.posicion[2] <= (-robot.dimBoard + 2 * robot.zonaDescarga)
+           robot.posicion[2] >= (robot.dimBoard - 2 * robot.zonaDescarga) && robot.posicion[2] <= robot.dimBoard
             robot.Direction *= 0.01
             robot.palletState = "GOING_DOWN"
             robot.actividad = "STOPPED"

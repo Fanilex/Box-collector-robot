@@ -1,4 +1,5 @@
 import os
+os.chdir("/Users/sofiazugasti/Desktop/Sitemas_multiagentes/Box-collector-robot/miri")
 import pygame
 from pygame.locals import *
 from math import sqrt
@@ -90,14 +91,28 @@ def drawFloor():
     glVertex3d(dimBoard, dimBoard, 0)
     glVertex3d(-dimBoard, dimBoard, 0)
     glEnd()
+    
+    # Dibujar las divisiones
+    glColor3f(0.0, 0.0, 0.0)  
+    glLineWidth(2.0) 
+
+    zona_ancho = dimBoard * 2 
+    recuadro_ancho = zona_ancho / 5  
+
+    glBegin(GL_LINES)
+    for i in range(1, 5):
+        x_pos = -dimBoard + i * recuadro_ancho  
+        glVertex3d(x_pos, dimBoard - 2 * zonaDescarga, 0.1)  
+        glVertex3d(x_pos, dimBoard, 0.1)  
+    glEnd()
 
     # Zona de recolección en la esquina inferior izquierda
     glColor3f(118 / 225, 132 / 225, 155 / 255)
     glBegin(GL_QUADS)
-    glVertex3d(-dimBoard, -dimBoard, 0.1)  # Ajuste en Z para evitar superposición
-    glVertex3d(-dimBoard + 2 * zonaDescarga, -dimBoard, 0.1)
-    glVertex3d(-dimBoard + 2 * zonaDescarga, -dimBoard + 2 * zonaDescarga, 0.1)
-    glVertex3d(-dimBoard, -dimBoard + 2 * zonaDescarga, 0.1)
+    glVertex3d(-dimBoard, dimBoard - 2 * zonaDescarga, 0.1) 
+    glVertex3d(dimBoard, dimBoard - 2 * zonaDescarga, 0.1)  
+    glVertex3d(dimBoard, dimBoard, 0.1)  
+    glVertex3d(-dimBoard, dimBoard, 0.1)  
     glEnd()
 
 def Init():
