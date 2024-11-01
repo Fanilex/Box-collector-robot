@@ -9,6 +9,7 @@ import math
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from OpenGL.GLUT import *
+#hola
 
 # para jalar el codigo de julia
 from julia.api import Julia
