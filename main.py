@@ -29,6 +29,8 @@ UP_Z = 0.0
 
 dimBoard = 250.0
 zonaDescarga = 50.0
+total_lanes = 5  # Número de carriles
+margin = 20.0    # Margen en unidades
 
 class SimulationState:
     def __init__(self):
@@ -74,27 +76,37 @@ def dibujarPlano():
     opmat = OpMat()
     opmat.push()
     
-    # Draw the main floor (board)
+    # Draw the main floor (board) within margins
     vertices = [
-        (-dimBoard, -dimBoard, 0),
-        (dimBoard, -dimBoard, 0),
-        (dimBoard, dimBoard, 0),
-        (-dimBoard, dimBoard, 0)
+        (-dimBoard + margin, -dimBoard + margin, 0),
+        (dimBoard - margin, -dimBoard + margin, 0),
+        (dimBoard - margin, dimBoard - margin, 0),
+        (-dimBoard + margin, dimBoard - margin, 0)
     ]
     transformed_vertices = opmat.mult_points(vertices)
     glColor3f(200/255, 200/255, 200/255)  # Light grey color for the floor
     glBegin(GL_QUADS)
-    print("Rendering drop-off zone...")
     for vertex in transformed_vertices:
         glVertex3f(*vertex)
     glEnd()
     
-    # Draw the drop-off zone
+    # Dibujar carriles verticales dentro del área de interacción con márgenes
+    lane_width = (2 * dimBoard - 2 * margin) / total_lanes  # Ajuste para márgenes
+    glColor3f(1.0, 1.0, 1.0)  # Color blanco para las líneas de los carriles
+    glLineWidth(2.0)
+    glBegin(GL_LINES)
+    for i in range(1, total_lanes):
+        x = -dimBoard + margin + i * lane_width
+        glVertex3f(x, -dimBoard + margin, 0.2)
+        glVertex3f(x, dimBoard - margin, 0.2)
+    glEnd()
+    
+    # Draw the drop-off zone within margins
     dropoff_vertices = [
-        (-dimBoard, dimBoard - zonaDescarga, 0.5),  # Bottom left corner of drop-off zone
-        (dimBoard, dimBoard - zonaDescarga, 0.5),   # Bottom right corner
-        (dimBoard, dimBoard, 0.5),                  # Top right corner
-        (-dimBoard, dimBoard, 0.5)                  # Top left corner
+        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.5),  # Bottom left corner of drop-off zone
+        (dimBoard - margin, dimBoard - zonaDescarga - margin, 0.5),   # Bottom right corner
+        (dimBoard - margin, dimBoard - margin, 0.5),                  # Top right corner
+        (-dimBoard + margin, dimBoard - margin, 0.5)                  # Top left corner
     ]
     transformed_dropoff_vertices = opmat.mult_points(dropoff_vertices)
     glColor3f(169/255, 169/255, 169/255)  # Dark grey color for the drop-off zone (change to red or yellow for testing)
@@ -111,6 +123,7 @@ def dibujarPlano():
     glEnable(GL_DEPTH_TEST)
 
     opmat.pop()
+
 
 def dibujar_robot(robot_state):
     opmat = OpMat()
@@ -259,7 +272,7 @@ def main():
 
             display(simulation)  # Pass simulation to display
             pygame.display.flip()
-            clock.tick(1)  # Increase to smooth out movement
+            clock.tick(1000)  # Increase to smooth out movement
 
     finally:
         simulation.cleanup()
