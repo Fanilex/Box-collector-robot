@@ -49,16 +49,26 @@ class SimulationState:
     
     def update(self):
         if not self.simulation_id:
-            return
+            raise ValueError("Simulation ID not set. Make sure to initialize the simulation first.")
         
         response = requests.post(f"{self.api_url}/simulation/{self.simulation_id}")
-        data = response.json()
-        self.robots_state = data["robots"]
-        self.packages_state = data["packages"]
+        
+        print("Response content:", response.content)  # Debug: check raw response content
+        
+        try:
+            data = response.json()
+            self.robots_state = data["robots"]
+            self.packages_state = data["packages"]
+        except json.JSONDecodeError:
+            print("Failed to parse JSON. Response content:", response.content)
+            data = None
+        
+        return data
     
     def cleanup(self):
         if self.simulation_id:
             requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
+
 
 def dibujarPlano():
     opmat = OpMat()
@@ -239,7 +249,8 @@ def main():
 
             display(simulation)  # Pass simulation to display
             pygame.display.flip()
-            clock.tick(5)
+            clock.tick(1)  # Increase to smooth out movement
+
     finally:
         simulation.cleanup()
         pygame.quit()

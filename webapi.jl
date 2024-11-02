@@ -1,6 +1,8 @@
-include("robot.jl")
 include("caja.jl")
+include("robot.jl")
 
+using .ModuloRobot  # Ensure this matches the module name in robot.jl
+using .ModuloCaja   # Ensure this matches the module name in caja.jl
 using Genie, Genie.Renderer.Json, Genie.Requests
 using UUIDs
 
@@ -29,12 +31,12 @@ route("/simulation", method = POST) do
     zona_descarga = 50.0
     
     # Create robots
-    robots = [ModuloRobot.crearRobot(dim_board, zona_descarga, 3.0, i + 1, num_robots) 
+    robots = [ModuloRobot.crearRobot(dim_board, zona_descarga, 5.0, i + 1, num_robots)
               for i in 1:num_robots]
-    
+
     # Create packages
     boxes = [ModuloCaja.crearCaja(dim_board, zona_descarga) 
-            for _ in 1:num_packages]
+             for _ in 1:num_packages]
     
     # Store in instances
     instances[id] = robots
@@ -62,21 +64,26 @@ route("/simulation/:id", method = POST) do
     robots = instances[id]
     boxes = paquetes[id]
     
-    # Update simulation
+    # Update simulation with the boxes list
     for robot in robots
-        ModuloRobot.update(robot)
+        ModuloRobot.update(robot, boxes)  # Pass `boxes` as the second argument
         
-        # Check for collisions
         if ModuloRobot.get_estado_robot(robot) == "buscar"
             for box in boxes
                 if ModuloCaja.get_estado_caja(box) != "esperando"
                     continue
                 end
+                
                 robot_pos = ModuloRobot.get_posicion(robot)
                 box_pos = ModuloCaja.get_posicion_caja(box)
                 dist = sqrt((robot_pos[1] - box_pos[1])^2 + (robot_pos[2] - box_pos[2])^2)
+                
+                println("Distance to box: ", dist)  # Debug: Check distance
+                
                 if dist < 10
+                    println("Collision detected! Transporting box...")  # Debug: Collision log
                     ModuloRobot.transportar(robot, box)
+                    println("Box picked up by robot")  # Confirm the robot has picked up the box
                     break
                 end
             end
