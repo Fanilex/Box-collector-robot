@@ -4,22 +4,16 @@ from pygame.locals import *
 from math import sqrt
 import numpy as np
 import requests
-
 from OpenGL.GL import *
 from OpenGL.GLU import *
-
-# Import custom classes and functions
 from opmat import OpMat
-from linea_bresenham import LineaBresenham3D
 
-# Screen dimensions and OpenGL settings
+# Configuraciones iniciales
 screen_width = 700
 screen_height = 700
-
 FOVY = 51.0
 ZNEAR = 0.01
 ZFAR = 950.0
-
 EYE_X = 0.0
 EYE_Y = 0.0
 EYE_Z = 510.0
@@ -32,60 +26,81 @@ UP_Z = 0.0
 
 dimBoard = 250.0
 zonaDescarga = 50.0
+robots = list(range(5))  # IDs de robots
+paquetes = list(range(20))  # IDs de paquetes
 
 pygame.init()
 
-robots = list(range(5))  # Assume 5 robot IDs
-paquetes = list(range(20))  # Assume 20 package IDs
-
-# Function to call the Julia server for robots
+# Función para llamar al servidor de robots
+# Updated function for handling JSON response parsing
 def call_julia_robot(action, id, caja_id=None):
-    url = "http://127.0.0.1:8081"  # Port for robot server
+    url = "http://127.0.0.1:8081"  # Robot server URL
     headers = {"Content-Type": "application/json"}
     data = {"action": action, "id": id}
     if caja_id is not None:
         data["caja_id"] = caja_id
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=5)  # Added timeout
         response.raise_for_status()
-        return response.json().get("result", None)
+        try:
+            # Attempt to parse JSON; if it fails, print response for debugging
+            return response.json().get("result", None)
+        except requests.exceptions.JSONDecodeError:
+            print("Invalid JSON response:", response.text)  # Debugging output
+            return None
     except requests.exceptions.RequestException as e:
-        print("Error calling robot server:", e)
+        print("Error calling the robot server:", e)
         return None
 
-# Function to call the Julia server for boxes
+# Updated function for handling JSON response parsing in caja server
 def call_julia_caja(action, id, estado=None):
-    url = "http://127.0.0.1:8082"  # Port for box server
+    url = "http://127.0.0.1:8082"  # Caja server URL
     headers = {"Content-Type": "application/json"}
     data = {"action": action, "id": id}
     if estado is not None:
         data["estado"] = estado
 
     try:
-        response = requests.post(url, headers=headers, json=data)
+        response = requests.post(url, headers=headers, json=data, timeout=5)  # Added timeout
         response.raise_for_status()
-        return response.json().get("result", None)
+        try:
+            # Attempt to parse JSON; if it fails, print response for debugging
+            return response.json().get("result", None)
+        except requests.exceptions.JSONDecodeError:
+            print("Invalid JSON response:", response.text)  # Debugging output
+            return None
     except requests.exceptions.RequestException as e:
-        print("Error calling caja server:", e)
+        print("Error calling the caja server:", e)
         return None
 
-# Function to detect collision between robots and packages
+# Función para detectar colisión entre robots y paquetes
 def detectarColisionCaja():
     for robot_id in robots:
         estado_robot = call_julia_robot("get_estado", robot_id)
         if estado_robot != "buscar":
             continue
+        
         robotPos = call_julia_robot("get_posicion", robot_id)
+        if robotPos is None:
+            continue  # Saltar si no se obtuvo la posición
+
         for caja_id in paquetes:
             estado_caja = call_julia_caja("get_estado", caja_id)
             if estado_caja != "esperando":
                 continue
+            
             cajaPos = call_julia_caja("get_posicion", caja_id)
+            if cajaPos is None:
+                continue  # Saltar si no se obtuvo la posición de la caja
+
+            # Calcular la distancia solo si ambas posiciones están definidas
             dist = sqrt((robotPos[0] - cajaPos[0]) ** 2 + (robotPos[1] - cajaPos[1]) ** 2)
             if dist < 10:
                 call_julia_robot("transportar", robot_id, caja_id)
                 break
+
+# Resto del código como dibujarPlano, Init, display, y main no cambia
 
 # Function to draw the ground plane
 def dibujarPlano():
