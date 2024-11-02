@@ -41,7 +41,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     angulo = rand() * 2π  # Ángulo inicial aleatorio
     rotando = false
     angulo_objetivo = angulo
-    velocidad_rotacion = π / 50  # Velocidad de rotación (radianes por frame)
+    velocidad_rotacion = π / 5  # Velocidad de rotación (radianes por frame)
     velocidad = 200  # Velocidad de movimiento
 
     # Asignar zona de descarga individual
