@@ -3,15 +3,12 @@ import pygame
 from pygame.locals import *
 from math import sqrt
 import numpy as np
-import math
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-from OpenGL.GLUT import *
 
 # Importamos las clases personalizadas
 from opmat import OpMat
-from linea_bresenham import LineaBresenham3D
 
 # Para integrar el código de Julia
 from julia.api import Julia
@@ -41,13 +38,6 @@ UP_X = 0.0
 UP_Y = 1.0
 UP_Z = 0.0
 
-X_MIN = -500
-X_MAX = 500
-Y_MIN = -500
-Y_MAX = 500
-Z_MIN = -500
-Z_MAX = 500
-
 dimBoard = 250.0
 zonaDescarga = 50.0
 
@@ -59,24 +49,20 @@ numRobots = 5
 paquetes = []  # Son los paquetes de las cajas
 npaquetes = 20
 
-def lookAt():
-    global EYE_X, EYE_Y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z
-
-    glLoadIdentity()
-    gluLookAt(EYE_X, EYE_Y, EYE_Z, CENTER_X, CENTER_Y, CENTER_Z, UP_X, UP_Y, UP_Z)
-
 def detectarColisionCaja():
     for robot in robots:
-        if robot.estado_robot != "buscar":
+        estado_robot = ModuloRobot.get_estado_robot(robot)
+        if estado_robot != "buscar":
             continue
-        for paquete in paquetes:
-            if paquete.estado_caja != "esperando":
+        robotPos = ModuloRobot.get_posicion(robot)
+        for caja in paquetes:
+            estado_caja = ModuloCaja.get_estado_caja(caja)
+            if estado_caja != "esperando":
                 continue
-            robotPos = robot.posicion
-            cajaPos = paquete.posicion
+            cajaPos = ModuloCaja.get_posicion_caja(caja)
             dist = sqrt((robotPos[0] - cajaPos[0]) ** 2 + (robotPos[1] - cajaPos[1]) ** 2)
             if dist < 10:
-                ModuloRobot.transportar(robot, paquete)
+                ModuloRobot.transportar(robot, caja)
                 break
 
 def dibujarPlano():
@@ -114,8 +100,10 @@ def dibujarPlano():
 def dibujar_caja(caja):
     opmat = OpMat()
     opmat.push()
-    opmat.translate(caja.posicion[0], caja.posicion[1], caja.posicion[2])
-    opmat.rotate(np.degrees(caja.angulo), 0, 0, 1)
+    posicion = ModuloCaja.get_posicion_caja(caja)
+    angulo = ModuloCaja.get_angulo_caja(caja)
+    opmat.translate(posicion[0], posicion[1], posicion[2])
+    opmat.rotate(np.degrees(angulo), 0, 0, 1)
     opmat.scale(0.2, 0.2, 0.2)
     dibujar_caja_body(opmat)
     opmat.pop()
@@ -153,8 +141,10 @@ def dibujar_caja_body(opmat):
 def dibujar_robot(robot):
     opmat = OpMat()
     opmat.push()
-    opmat.translate(robot.posicion[0], robot.posicion[1], robot.posicion[2])
-    opmat.rotate(np.degrees(robot.angulo), 0, 0, 1)
+    posicion = ModuloRobot.get_posicion(robot)
+    angulo = ModuloRobot.get_angulo(robot)
+    opmat.translate(posicion[0], posicion[1], posicion[2])
+    opmat.rotate(np.degrees(angulo), 0, 0, 1)
     opmat.scale(0.2, 0.2, 0.2)
     dibujar_robot_body(opmat)
     dibujar_llantas_robot(opmat)
@@ -230,10 +220,14 @@ def Init():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
     global robots, paquetes
-    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 1.0)
+    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 3.0)
               for _ in range(numRobots)]
     paquetes = [ModuloCaja.crearCaja(dimBoard, zonaDescarga)
                 for _ in range(npaquetes)]
+
+    # Pasar las listas a Julia
+    Main.robots = robots
+    Main.paquetes = paquetes
 
 def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -241,15 +235,18 @@ def display():
     detectarColisionCaja()
 
     for robot in robots:
-        dibujar_robot(robot)
         ModuloRobot.update(robot)
+        dibujar_robot(robot)
     for caja in paquetes:
-        if caja.estado_caja != "soltada":
+        estado_caja = ModuloCaja.get_estado_caja(caja)
+        if estado_caja != "soltada":
             dibujar_caja(caja)
 
 def main():
     done = False
     Init()
+
+    clock = pygame.time.Clock()
 
     while not done:
         for event in pygame.event.get():
@@ -258,7 +255,7 @@ def main():
 
         display()
         pygame.display.flip()
-        pygame.time.wait(30)
+        clock.tick(60)  # Limitamos a 60 FPS para una animación suave
 
     pygame.quit()
 

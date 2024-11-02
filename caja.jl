@@ -1,5 +1,7 @@
 module ModuloCaja
 export Caja, crearCaja, setPos
+export get_estado_caja, set_estado_caja
+export get_posicion_caja, get_angulo_caja
 using Random
 
 mutable struct Caja
@@ -30,4 +32,21 @@ function setPos(caja::Caja, pos::Vector{Float64}, an::Float64)
    caja.angulo = an
 end
 
+# Funciones de acceso (getters y setters)
+function get_estado_caja(caja::Caja)
+    return caja.estado_caja
 end
+
+function set_estado_caja(caja::Caja, estado::String)
+    caja.estado_caja = estado
+end
+
+function get_posicion_caja(caja::Caja)
+    return caja.posicion
+end
+
+function get_angulo_caja(caja::Caja)
+    return caja.angulo
+end
+
+end  # Fin del módulo ModuloCaja
