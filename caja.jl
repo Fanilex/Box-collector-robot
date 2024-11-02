@@ -1,24 +1,23 @@
 module ModuloCaja
-export Caja, crearCaja, setPos
-export get_estado_caja, set_estado_caja
-export get_posicion_caja, get_angulo_caja
+export Caja, crearCaja, setPos, get_estado_caja, set_estado_caja, get_posicion_caja, get_angulo_caja
 using Random
 using JSON  # Soporte para serialización JSON
 
 mutable struct Caja
-    posicion::Vector{Float64}
-    angulo::Float64
-    estado_caja::String
+   posicion::Vector{Float64}
+   angulo::Float64
+   estado_caja::String
 end
 
 # Soporte para serialización a JSON
 function Base.Dict(caja::Caja)
-    Dict(
-        "posicion" => caja.posicion,
-        "angulo" => caja.angulo,
-        "estado_caja" => caja.estado_caja
-    )
+   Dict(
+       "posicion" => caja.posicion,
+       "angulo" => caja.angulo,
+       "estado_caja" => caja.estado_caja
+   )
 end
+
 
 function crearCaja(dimBoard::Float64, zonaDescarga::Float64, margin::Float64)
     min_coord = -dimBoard + 10 + margin  # Asegura que no se cree dentro del margen
@@ -36,35 +35,49 @@ function crearCaja(dimBoard::Float64, zonaDescarga::Float64, margin::Float64)
     return Caja(posicion, angulo, estado_caja)
 end
 
+
 function setPos(caja::Caja, pos::Vector{Float64}, an::Float64)
-    caja.posicion = pos
-    caja.angulo = an
+   caja.posicion = pos
+   caja.angulo = an
 end
+
+
+function setPosYEstado!(caja::Caja, pos::Vector{Float64}, an::Float64, estado::String)
+   caja.posicion = pos
+   caja.angulo = an
+   caja.estado_caja = estado
+end
+
 
 # Funciones de acceso (getters y setters)
 function get_estado_caja(caja::Caja)
-    return caja.estado_caja
+   return caja.estado_caja
 end
+
 
 function set_estado_caja(caja::Caja, estado::String)
-    caja.estado_caja = estado
+   caja.estado_caja = estado
 end
+
 
 function get_posicion_caja(caja::Caja)
-    return caja.posicion
+   return caja.posicion
 end
 
+
 function get_angulo_caja(caja::Caja)
-    return caja.angulo
+   return caja.angulo
 end
+
 
 # Add a function to create a serializable representation
 function to_dict(caja::Caja)
-    return Dict(
-        "position" => caja.posicion,
-        "angle" => caja.angulo,
-        "state" => caja.estado_caja
-    )
+   return Dict(
+       "position" => caja.posicion,
+       "angle" => caja.angulo,
+       "state" => caja.estado_caja
+   )
 end
+
 
 end  # Fin del módulo ModuloCaja
