@@ -85,7 +85,8 @@ class SimulationState:
 def dibujarPlano():
     opmat = OpMat()
     opmat.push()
-    # Piso
+    
+    # Draw the main floor (board)
     vertices = [
         (-dimBoard, -dimBoard, 0),
         (dimBoard, -dimBoard, 0),
@@ -93,23 +94,22 @@ def dibujarPlano():
         (-dimBoard, dimBoard, 0)
     ]
     transformed_vertices = opmat.mult_points(vertices)
-    glColor3f(200/255, 200/255, 200/255)
+    glColor3f(200/255, 200/255, 200/255)  # Light grey color for the floor
     glBegin(GL_QUADS)
     for vertex in transformed_vertices:
         glVertex3f(*vertex)
     glEnd()
-
-
-    # Zona de descarga
-    vertices_zona = [
-        (-dimBoard, dimBoard - zonaDescarga, 0.1),
-        (dimBoard, dimBoard - zonaDescarga, 0.1),
-        (dimBoard, dimBoard, 0.1),
-        (-dimBoard, dimBoard, 0.1)
+    
+    # Draw the drop-off zone
+    dropoff_vertices = [
+        (-dimBoard, dimBoard - zonaDescarga, 0.5),  # Bottom left corner of drop-off zone
+        (dimBoard, dimBoard - zonaDescarga, 0.5),   # Bottom right corner
+        (dimBoard, dimBoard, 0.5),                  # Top right corner
+        (-dimBoard, dimBoard, 0.5)                  # Top left corner
     ]
-    transformed_vertices_zona = opmat.mult_points(vertices_zona)
-    glColor3f(118/255, 132/255, 155/255)
-   # Disable depth testing temporarily
+    transformed_dropoff_vertices = opmat.mult_points(dropoff_vertices)
+    glColor3f(169/255, 169/255, 169/255)  # Dark grey color for the drop-off zone (change to red or yellow for testing)
+    # Disable depth testing temporarily
     glDisable(GL_DEPTH_TEST)
 
     # Draw the drop-off zone
@@ -120,8 +120,9 @@ def dibujarPlano():
 
     # Re-enable depth testing
     glEnable(GL_DEPTH_TEST)
-
+    
     opmat.pop()
+
 
 
 def dibujar_robot(robot_state):
