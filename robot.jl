@@ -1,8 +1,11 @@
+include("caja.jl")
+using .ModuloCaja
 module ModuloRobot
 export Robot, crearRobot, update, transportar, soltar
 export get_estado_robot, get_posicion, get_angulo, asignar_zona_descarga
 using Random
 using LinearAlgebra
+
 
 mutable struct Robot
     dimBoard::Float64

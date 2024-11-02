@@ -3,23 +3,12 @@ import pygame
 from pygame.locals import *
 from math import sqrt
 import numpy as np
+import requests
+import json
 
 from OpenGL.GL import *
 from OpenGL.GLU import *
-
-# Importamos las clases personalizadas
 from opmat import OpMat
-
-# Para integrar el código de Julia
-from julia.api import Julia
-jl = Julia(compiled_modules=False)
-from julia import Main
-
-Main.include("caja.jl")
-Main.include("robot.jl")
-
-ModuloCaja = Main.ModuloCaja
-ModuloRobot = Main.ModuloRobot
 
 screen_width = 700
 screen_height = 700
@@ -41,29 +30,35 @@ UP_Z = 0.0
 dimBoard = 250.0
 zonaDescarga = 50.0
 
-pygame.init()
-
-robots = []
-numRobots = 5
-
-paquetes = []  # Son los paquetes de las cajas
-npaquetes = 20
-
-def detectarColisionCaja():
-    for robot in robots:
-        estado_robot = ModuloRobot.get_estado_robot(robot)
-        if estado_robot != "buscar":
-            continue
-        robotPos = ModuloRobot.get_posicion(robot)
-        for caja in paquetes:
-            estado_caja = ModuloCaja.get_estado_caja(caja)
-            if estado_caja != "esperando":
-                continue
-            cajaPos = ModuloCaja.get_posicion_caja(caja)
-            dist = sqrt((robotPos[0] - cajaPos[0]) ** 2 + (robotPos[1] - cajaPos[1]) ** 2)
-            if dist < 10:
-                ModuloRobot.transportar(robot, caja)
-                break
+class SimulationState:
+    def __init__(self):
+        self.simulation_id = None
+        self.robots_state = []
+        self.packages_state = []
+        self.api_url = "http://localhost:8000"
+    
+    def initialize_simulation(self, num_robots=5, num_packages=20):
+        response = requests.post(
+            f"{self.api_url}/simulation",
+            json={"num_robots": num_robots, "num_packages": num_packages}
+        )
+        data = response.json()
+        self.simulation_id = data["id"]
+        self.robots_state = data["robots"]
+        self.packages_state = data["packages"]
+    
+    def update(self):
+        if not self.simulation_id:
+            return
+        
+        response = requests.post(f"{self.api_url}/simulation/{self.simulation_id}")
+        data = response.json()
+        self.robots_state = data["robots"]
+        self.packages_state = data["packages"]
+    
+    def cleanup(self):
+        if self.simulation_id:
+            requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
 
 def dibujarPlano():
     opmat = OpMat()
@@ -76,13 +71,13 @@ def dibujarPlano():
         (-dimBoard, dimBoard, 0)
     ]
     transformed_vertices = opmat.mult_points(vertices)
-    glColor3f(200 / 255, 200 / 255, 200 / 255)
+    glColor3f(200/255, 200/255, 200/255)
     glBegin(GL_QUADS)
     for vertex in transformed_vertices:
         glVertex3f(*vertex)
     glEnd()
 
-    # Zona de descarga (parte superior del área)
+    # Zona de descarga
     vertices_zona = [
         (-dimBoard, dimBoard - zonaDescarga, 0.1),
         (dimBoard, dimBoard - zonaDescarga, 0.1),
@@ -90,59 +85,18 @@ def dibujarPlano():
         (-dimBoard, dimBoard, 0.1)
     ]
     transformed_vertices_zona = opmat.mult_points(vertices_zona)
-    glColor3f(118 / 225, 132 / 225, 155 / 255)
+    glColor3f(118/255, 132/255, 155/255)
     glBegin(GL_QUADS)
     for vertex in transformed_vertices_zona:
         glVertex3f(*vertex)
     glEnd()
     opmat.pop()
 
-def dibujar_caja(caja):
+def dibujar_robot(robot_state):
     opmat = OpMat()
     opmat.push()
-    posicion = ModuloCaja.get_posicion_caja(caja)
-    angulo = ModuloCaja.get_angulo_caja(caja)
-    opmat.translate(posicion[0], posicion[1], posicion[2])
-    opmat.rotate(np.degrees(angulo), 0, 0, 1)
-    opmat.scale(0.2, 0.2, 0.2)
-    dibujar_caja_body(opmat)
-    opmat.pop()
-
-def dibujar_caja_body(opmat):
-    # Obtener los vértices del cubo
-    vertices = [
-        (-10, -10, -10),
-        (10, -10, -10),
-        (10, 10, -10),
-        (-10, 10, -10),
-        (-10, -10, 10),
-        (10, -10, 10),
-        (10, 10, 10),
-        (-10, 10, 10)
-    ]
-
-    # Transformar los vértices
-    transformed_vertices = opmat.mult_points(vertices)
-
-    # Dibujar líneas entre los vértices para formar el cubo
-    edges = [
-        (0,1), (1,2), (2,3), (3,0),  # Cara inferior
-        (4,5), (5,6), (6,7), (7,4),  # Cara superior
-        (0,4), (1,5), (2,6), (3,7)   # Conexiones verticales
-    ]
-
-    glColor3f(187 / 255, 156 / 255, 110 / 255)
-    glBegin(GL_LINES)
-    for edge in edges:
-        for vertex in edge:
-            glVertex3f(*transformed_vertices[vertex])
-    glEnd()
-
-def dibujar_robot(robot):
-    opmat = OpMat()
-    opmat.push()
-    posicion = ModuloRobot.get_posicion(robot)
-    angulo = ModuloRobot.get_angulo(robot)
+    posicion = robot_state["position"]
+    angulo = robot_state["angle"]
     opmat.translate(posicion[0], posicion[1], posicion[2])
     opmat.rotate(np.degrees(angulo), 0, 0, 1)
     opmat.scale(0.2, 0.2, 0.2)
@@ -151,7 +105,6 @@ def dibujar_robot(robot):
     opmat.pop()
 
 def dibujar_robot_body(opmat):
-    # Definir los vértices del cuerpo del robot (un cubo)
     vertices = [
         (-40, -20, -15),
         (40, -20, -15),
@@ -171,7 +124,7 @@ def dibujar_robot_body(opmat):
         (0,4), (1,5), (2,6), (3,7)
     ]
 
-    glColor3f(30 / 255, 68 / 255, 168 / 255)
+    glColor3f(30/255, 68/255, 168/255)
     glBegin(GL_LINES)
     for edge in edges:
         for vertex in edge:
@@ -179,7 +132,6 @@ def dibujar_robot_body(opmat):
     glEnd()
 
 def dibujar_llantas_robot(opmat):
-    # Definir las posiciones de las llantas
     posiciones_llantas = [
         (35, 20, -15),
         (-35, 20, -15),
@@ -191,8 +143,7 @@ def dibujar_llantas_robot(opmat):
         opmat.push()
         opmat.translate(pos[0], pos[1], pos[2])
         opmat.rotate(90, 0, 1, 0)
-        # Dibujar la llanta como un círculo usando líneas
-        glColor3f(52 / 255, 51 / 255, 51 / 255)
+        glColor3f(52/255, 51/255, 51/255)
         glBegin(GL_LINE_LOOP)
         for i in range(20):
             theta = 2.0 * np.pi * i / 20
@@ -202,7 +153,45 @@ def dibujar_llantas_robot(opmat):
         glEnd()
         opmat.pop()
 
-def Init():
+def dibujar_caja(package_state):
+    opmat = OpMat()
+    opmat.push()
+    posicion = package_state["position"]
+    angulo = package_state["angle"]
+    opmat.translate(posicion[0], posicion[1], posicion[2])
+    opmat.rotate(np.degrees(angulo), 0, 0, 1)
+    opmat.scale(0.2, 0.2, 0.2)
+    dibujar_caja_body(opmat)
+    opmat.pop()
+
+def dibujar_caja_body(opmat):
+    vertices = [
+        (-10, -10, -10),
+        (10, -10, -10),
+        (10, 10, -10),
+        (-10, 10, -10),
+        (-10, -10, 10),
+        (10, -10, 10),
+        (10, 10, 10),
+        (-10, 10, 10)
+    ]
+
+    transformed_vertices = opmat.mult_points(vertices)
+
+    edges = [
+        (0,1), (1,2), (2,3), (3,0),
+        (4,5), (5,6), (6,7), (7,4),
+        (0,4), (1,5), (2,6), (3,7)
+    ]
+
+    glColor3f(187/255, 156/255, 110/255)
+    glBegin(GL_LINES)
+    for edge in edges:
+        for vertex in edge:
+            glVertex3f(*transformed_vertices[vertex])
+    glEnd()
+
+def Init(simulation):  # Add simulation as parameter
     screen = pygame.display.set_mode(
         (screen_width, screen_height), DOUBLEBUF | OPENGL)
     pygame.display.set_caption("OpenGL: Robots")
@@ -219,45 +208,41 @@ def Init():
     glEnable(GL_DEPTH_TEST)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
-    global robots, paquetes
-    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 3.0, i + 1, numRobots)
-              for i in range(numRobots)]
-    paquetes = [ModuloCaja.crearCaja(dimBoard, zonaDescarga)
-                for _ in range(npaquetes)]
+    simulation.initialize_simulation()
 
-    # Pasar las listas a Julia
-    Main.robots = robots
-    Main.paquetes = paquetes
-
-def display():
+def display(simulation):  # Add simulation as parameter
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     dibujarPlano()
-    detectarColisionCaja()
-
-    for robot in robots:
-        ModuloRobot.update(robot)
-        dibujar_robot(robot)
-    for caja in paquetes:
-        estado_caja = ModuloCaja.get_estado_caja(caja)
-        if estado_caja != "soltada":
-            dibujar_caja(caja)
+    
+    simulation.update()
+    
+    for robot_state in simulation.robots_state:
+        dibujar_robot(robot_state)
+    
+    for package_state in simulation.packages_state:
+        if package_state["state"] != "soltada":
+            dibujar_caja(package_state)
 
 def main():
+    pygame.init()
+    simulation = SimulationState()
     done = False
-    Init()
+    Init(simulation)  # Pass simulation to Init
 
     clock = pygame.time.Clock()
 
-    while not done:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
+    try:
+        while not done:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    done = True
 
-        display()
-        pygame.display.flip()
-        clock.tick(60)  # Limitamos a 60 FPS para una animación suave
-
-    pygame.quit()
+            display(simulation)  # Pass simulation to display
+            pygame.display.flip()
+            clock.tick(5)
+    finally:
+        simulation.cleanup()
+        pygame.quit()
 
 if __name__ == '__main__':
     main()
