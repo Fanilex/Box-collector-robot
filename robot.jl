@@ -273,3 +273,4 @@ function asignar_zona_descarga(robot::Robot, x_min::Float64, x_max::Float64, y_m
 end
 
 end  # Fin del módulo ModuloRobot
+
