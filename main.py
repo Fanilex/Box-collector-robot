@@ -289,26 +289,27 @@ def display(simulation):  # Add simulation as parameter
 
 
 def main():
-   pygame.init()
-   simulation = SimulationState()
-   done = False
-   Init(simulation)  # Pass simulation to Init
+    pygame.init()
+    simulation = SimulationState()
+    done = False
+    Init(simulation)  # Pass simulation to Init
 
 
-   clock = pygame.time.Clock()
+    clock = pygame.time.Clock()
 
 
-   try:
+    try:
        while not done:
            for event in pygame.event.get():
                if event.type == pygame.QUIT:
                    done = True
 
-            display(simulation)  # Pass simulation to display
-            pygame.display.flip()
-            clock.tick(1000)  # Increase to smooth out movement
 
-   finally:
+           display(simulation)  # Pass simulation to display
+           pygame.display.flip()
+           clock.tick(500)  # Increase to smooth out movement
+
+    finally:
        simulation.cleanup()
        pygame.quit()
 

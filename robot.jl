@@ -58,8 +58,8 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     caja_recogida = nothing
     rotando = false
     angulo_objetivo = angulo
-    velocidad_rotacion = π / 30  # Velocidad de rotación (radianes por frame)
-    velocidad = vel  # Velocidad de movimiento
+    velocidad_rotacion = π / 2  # Velocidad de rotación (radianes por frame)
+    velocidad = 200  # Velocidad de movimiento
 
     # Asignar zona de descarga individual
     ancho_zona = (2 * dimBoard - 2 * margin) / total_robots

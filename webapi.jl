@@ -36,10 +36,8 @@ route("/simulation", method = POST) do
     robots = [ModuloRobot.crearRobot(dim_board, zona_descarga, 5.0, i + 1, num_robots, total_lanes, margin)
           for i in 1:num_robots]
 
-
     # Create packages
     boxes = [ModuloCaja.crearCaja(dim_board, zona_descarga, margin) for _ in 1:num_packages]
-
     
     # Store in instances
     instances[id] = robots
