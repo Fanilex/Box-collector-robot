@@ -1,3 +1,4 @@
+# frontend.py
 import os
 import pygame
 from pygame.locals import *
@@ -9,6 +10,17 @@ import json
 from OpenGL.GL import *
 from OpenGL.GLU import *
 from opmat import OpMat
+
+# Importamos las clases personalizadas
+from julia.api import Julia
+jl = Julia(compiled_modules=False)
+from julia import Main
+
+Main.include("caja.jl")
+Main.include("robot.jl")
+
+ModuloCaja = Main.ModuloCaja
+ModuloRobot = Main.ModuloRobot
 
 screen_width = 700
 screen_height = 700
@@ -29,6 +41,8 @@ UP_Z = 0.0
 
 dimBoard = 250.0
 zonaDescarga = 50.0
+total_lanes = 5  # Número de carriles
+margin = 20.0    # Margen en unidades
 
 class SimulationState:
     def __init__(self):
@@ -60,10 +74,14 @@ class SimulationState:
         if self.simulation_id:
             requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
 
+def detectarColisionCaja(simulation):
+    # Aquí se podría implementar la lógica de colisión si es necesario
+    pass
+
 def dibujarPlano():
     opmat = OpMat()
     opmat.push()
-    # Piso
+    # Piso exterior (incluye el margen)
     vertices = [
         (-dimBoard, -dimBoard, 0),
         (dimBoard, -dimBoard, 0),
@@ -77,12 +95,37 @@ def dibujarPlano():
         glVertex3f(*vertex)
     glEnd()
 
-    # Zona de descarga
+    # Piso interior (área de interacción)
+    vertices_interior = [
+        (-dimBoard + margin, -dimBoard + margin, 0.1),
+        (dimBoard - margin, -dimBoard + margin, 0.1),
+        (dimBoard - margin, dimBoard - margin, 0.1),
+        (-dimBoard + margin, dimBoard - margin, 0.1)
+    ]
+    transformed_vertices_interior = opmat.mult_points(vertices_interior)
+    glColor3f(150/255, 150/255, 150/255)
+    glBegin(GL_QUADS)
+    for vertex in transformed_vertices_interior:
+        glVertex3f(*vertex)
+    glEnd()
+
+    # Dibujar carriles verticales dentro del área de interacción
+    lane_width = (2 * dimBoard) / total_lanes
+    glColor3f(1.0, 1.0, 1.0)  # Color blanco para las líneas de los carriles
+    glLineWidth(2.0)
+    glBegin(GL_LINES)
+    for i in range(1, total_lanes):
+        x = -dimBoard + i * lane_width
+        glVertex3f(x, -dimBoard + margin, 0.2)
+        glVertex3f(x, dimBoard - margin, 0.2)
+    glEnd()
+
+    # Zona de descarga (parte superior del área de interacción)
     vertices_zona = [
-        (-dimBoard, dimBoard - zonaDescarga, 0.1),
-        (dimBoard, dimBoard - zonaDescarga, 0.1),
-        (dimBoard, dimBoard, 0.1),
-        (-dimBoard, dimBoard, 0.1)
+        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.1),
+        (dimBoard - margin, dimBoard - zonaDescarga - margin, 0.1),
+        (dimBoard - margin, dimBoard - margin, 0.1),
+        (-dimBoard + margin, dimBoard - margin, 0.1)
     ]
     transformed_vertices_zona = opmat.mult_points(vertices_zona)
     glColor3f(118/255, 132/255, 155/255)
@@ -208,7 +251,15 @@ def Init(simulation):  # Add simulation as parameter
     glEnable(GL_DEPTH_TEST)
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
-    simulation.initialize_simulation()
+    # Pasar el margen a Julia al crear robots
+    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 3.0, i + 1, numRobots, total_lanes, margin)
+              for i in range(numRobots)]
+    paquetes = [ModuloCaja.crearCaja(dimBoard, zonaDescarga)
+                for _ in range(npaquetes)]
+
+    # Pasar las listas a Julia
+    Main.robots = robots
+    Main.paquetes = paquetes
 
 def display(simulation):  # Add simulation as parameter
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
@@ -239,7 +290,7 @@ def main():
 
             display(simulation)  # Pass simulation to display
             pygame.display.flip()
-            clock.tick(5)
+            clock.tick(60)  # Limitamos a 60 FPS para una animación suave
     finally:
         simulation.cleanup()
         pygame.quit()

@@ -1,11 +1,9 @@
-include("caja.jl")
-using .ModuloCaja
+# robot.jl
 module ModuloRobot
 export Robot, crearRobot, update, transportar, soltar
 export get_estado_robot, get_posicion, get_angulo, asignar_zona_descarga
 using Random
 using LinearAlgebra
-
 
 mutable struct Robot
     dimBoard::Float64
@@ -20,43 +18,56 @@ mutable struct Robot
     angulo_objetivo::Float64
     velocidad_rotacion::Float64
     velocidad::Float64
-    # Nuevos campos para manejo de apilamiento
+    # Campos para manejo de apilamiento
     zona_descarga_robot::Tuple{Float64, Float64, Float64, Float64}  # (x_min, x_max, y_min, y_max)
     posiciones_pilas::Vector{Vector{Float64}}  # Lista de posiciones de pilas
     indice_pila_actual::Int
     altura_pila_actual::Int
+    # Campos para límites de carril
+    lane_x_min::Float64
+    lane_x_max::Float64
+    # Campo para margen
+    margin::Float64
 end
 
-function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_robot::Int, total_robots::Int)
-    min_coord = -dimBoard
-    max_coord = dimBoard
-    posicion = [rand() * (max_coord - min_coord) + min_coord,
-                rand() * (max_coord - min_coord) + min_coord,
-                13.0]
+function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_robot::Int, total_robots::Int, total_lanes::Int, margin::Float64)
+    # Calcular el ancho de cada carril
+    lane_width = (2 * dimBoard) / total_lanes
+    # Asignar carril basado en el número del robot
+    lane_index = (num_robot - 1) % total_lanes  # Para asegurar que si hay más robots que carriles, se repitan
+    lane_x_min = -dimBoard + lane_index * lane_width + margin
+    lane_x_max = lane_x_min + lane_width - margin
+
+    # Generar posición inicial dentro del carril y respetando el margen en Y
+    min_coord_y = -dimBoard + margin
+    max_coord_y = dimBoard - zonaDescarga - margin
+    x = rand() * (lane_x_max - lane_x_min) + lane_x_min
+    y = rand() * (max_coord_y - min_coord_y) + min_coord_y
+    posicion = [x, y, 13.0]
+    angulo = rand() * 2π  # Ángulo inicial aleatorio
     estado_robot = "buscar"
     contador = 0
     puntoCarga = zeros(3)
     caja_recogida = nothing
-    angulo = rand() * 2π  # Ángulo inicial aleatorio
     rotando = false
     angulo_objetivo = angulo
     velocidad_rotacion = π / 30  # Velocidad de rotación (radianes por frame)
     velocidad = vel  # Velocidad de movimiento
 
     # Asignar zona de descarga individual
-    ancho_zona = 2 * dimBoard / total_robots
-    x_min = -dimBoard + (num_robot - 1) * ancho_zona
-    x_max = x_min + ancho_zona
-    y_min = dimBoard - zonaDescarga
-    y_max = dimBoard
+    ancho_zona = (2 * dimBoard) / total_robots
+    x_min_descarga = -dimBoard + (num_robot - 1) * ancho_zona + margin
+    x_max_descarga = x_min_descarga + ancho_zona - margin
+    y_min = dimBoard - zonaDescarga - margin
+    y_max = dimBoard - margin
 
-    zona_descarga_robot = (x_min, x_max, y_min, y_max)
+    zona_descarga_robot = (x_min_descarga, x_max_descarga, y_min, y_max)
 
     # Inicializar posiciones de pilas
     posiciones_pilas = []
     num_pilas = 5  # Número máximo de pilas en la zona
     for i in 1:num_pilas
-        x_pila = x_min + (i - 0.5) * (ancho_zona / num_pilas)
+        x_pila = x_min_descarga + (i - 0.5) * (ancho_zona / num_pilas)
         y_pila = y_min + zonaDescarga / 2
         push!(posiciones_pilas, [x_pila, y_pila])
     end
@@ -65,7 +76,8 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
 
     robot = Robot(dimBoard, zonaDescarga, posicion, estado_robot, contador, puntoCarga, caja_recogida,
                   angulo, rotando, angulo_objetivo, velocidad_rotacion, velocidad,
-                  zona_descarga_robot, posiciones_pilas, indice_pila_actual, altura_pila_actual)
+                  zona_descarga_robot, posiciones_pilas, indice_pila_actual, altura_pila_actual,
+                  lane_x_min, lane_x_max, margin)
     updatePuntoCarga!(robot)
     return robot
 end
@@ -158,18 +170,29 @@ function update(robot::Robot)
         # Movimiento hacia adelante
         delta_x = robot.velocidad * cos(robot.angulo)
         delta_y = robot.velocidad * sin(robot.angulo)
-        robot.posicion[1] += delta_x
-        robot.posicion[2] += delta_y
+        nueva_x = robot.posicion[1] + delta_x
+        nueva_y = robot.posicion[2] + delta_y
 
-        # Verificar límites y ajustar ángulo si es necesario
-        if robot.posicion[1] < -robot.dimBoard || robot.posicion[1] > robot.dimBoard
-            robot.posicion[1] = clamp(robot.posicion[1], -robot.dimBoard, robot.dimBoard)
+        # Verificar límites del carril y ajustar posición y ángulo si es necesario
+        if nueva_x < robot.lane_x_min
+            nueva_x = robot.lane_x_min
+            robot.angulo = π - robot.angulo
+        elseif nueva_x > robot.lane_x_max
+            nueva_x = robot.lane_x_max
             robot.angulo = π - robot.angulo
         end
-        if robot.posicion[2] < -robot.dimBoard || robot.posicion[2] > robot.dimBoard
-            robot.posicion[2] = clamp(robot.posicion[2], -robot.dimBoard, robot.dimBoard)
+
+        # Verificar límites en Y y ajustar ángulo si es necesario
+        if nueva_y < -robot.dimBoard + robot.margin
+            nueva_y = -robot.dimBoard + robot.margin
+            robot.angulo = -robot.angulo
+        elseif nueva_y > robot.dimBoard - robot.zonaDescarga - robot.margin
+            nueva_y = robot.dimBoard - robot.zonaDescarga - robot.margin
             robot.angulo = -robot.angulo
         end
+
+        robot.posicion[1] = nueva_x
+        robot.posicion[2] = nueva_y
     end
 
     updatePuntoCarga!(robot)
