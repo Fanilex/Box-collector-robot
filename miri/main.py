@@ -133,7 +133,7 @@ def Init():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
     global robots, paquetes
-    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 1.0) for _ in range(numRobots)]
+    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 1.0, i+1) for i in range(numRobots)]
     paquetes = [ModuloCaja.crearCaja(dimBoard, zonaDescarga) for _ in range(npaquetes)]
 
 def draw_caja(caja):

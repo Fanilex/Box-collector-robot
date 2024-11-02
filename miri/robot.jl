@@ -1,3 +1,4 @@
+
 module ModuloRobot
 
 export Robot, crearRobot, update, transportar, soltar
@@ -19,9 +20,10 @@ mutable struct Robot
     transportando::Any
     Direction::Vector{Float64}
     angulo::Float64
+    seccionAlmacen::Int  # New field for storage section
 end
 
-function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64)
+function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, seccionAlmacen::Int)
     posicion = [rand(-dimBoard:dimBoard), rand(-dimBoard:dimBoard), 13.0]
     actividad = "buscar"
     count = 0
@@ -35,7 +37,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64)
     Direction = (dir_vector / norm(dir_vector)) * vel
     angulo = atan(Direction[2], Direction[1])
     robot = Robot(dimBoard, zonaDescarga, posicion, actividad, count, maxPalletHeight, minPalletHeight,
-                  palletHeight, palletState, forkCenter, transportando, Direction, angulo)
+                  palletHeight, palletState, forkCenter, transportando, Direction, angulo, seccionAlmacen)
     updateForkCenter!(robot)
     return robot
 end
@@ -68,10 +70,13 @@ function soltar(robot::Robot)
 end
 
 function eventHandler!(robot::Robot)
+    # Define the x-axis range for each robot's assigned section
+    zona_ancho = robot.dimBoard * 2
+    recuadro_ancho = zona_ancho / 5
+    target_x = -robot.dimBoard + (robot.seccionAlmacen - 1) * recuadro_ancho
+
     if robot.actividad == "DROPPING_OFF"
-        # Cambiar la posición objetivo para la esquina superior izquierda
-        target_x = -robot.dimBoard + robot.zonaDescarga
-        target_y = robot.dimBoard - robot.zonaDescarga  # Cambia a la parte superior del tablero
+        target_y = robot.dimBoard - robot.zonaDescarga
         newDir = [target_x - robot.posicion[1], target_y - robot.posicion[2], 0.0]
         fctr = norm(newDir)
         newDir = newDir / fctr
@@ -79,8 +84,7 @@ function eventHandler!(robot::Robot)
         robot.actividad = "EN_ROUTE"
         robot.count = 0
     elseif robot.actividad == "EN_ROUTE"
-        # Verificar si el robot está dentro de la nueva zona de recolección en la esquina superior izquierda
-        if robot.posicion[1] >= -robot.dimBoard && robot.posicion[1] <= (-robot.dimBoard + 2 * robot.zonaDescarga) &&
+        if robot.posicion[1] >= target_x && robot.posicion[1] <= (target_x + recuadro_ancho) &&
            robot.posicion[2] >= (robot.dimBoard - 2 * robot.zonaDescarga) && robot.posicion[2] <= robot.dimBoard
             robot.Direction *= 0.01
             robot.palletState = "GOING_DOWN"
