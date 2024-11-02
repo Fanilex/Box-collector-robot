@@ -82,12 +82,12 @@ def dibujarPlano():
         glVertex3f(*vertex)
     glEnd()
 
-    # Zona de descarga
+    # Zona de descarga (parte superior del área)
     vertices_zona = [
-        (-dimBoard, -dimBoard, 0.1),
-        (-dimBoard + 2 * zonaDescarga, -dimBoard, 0.1),
-        (-dimBoard + 2 * zonaDescarga, -dimBoard + 2 * zonaDescarga, 0.1),
-        (-dimBoard, -dimBoard + 2 * zonaDescarga, 0.1)
+        (-dimBoard, dimBoard - zonaDescarga, 0.1),
+        (dimBoard, dimBoard - zonaDescarga, 0.1),
+        (dimBoard, dimBoard, 0.1),
+        (-dimBoard, dimBoard, 0.1)
     ]
     transformed_vertices_zona = opmat.mult_points(vertices_zona)
     glColor3f(118 / 225, 132 / 225, 155 / 255)
@@ -220,8 +220,8 @@ def Init():
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
 
     global robots, paquetes
-    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 3.0)
-              for _ in range(numRobots)]
+    robots = [ModuloRobot.crearRobot(dimBoard, zonaDescarga, 3.0, i + 1, numRobots)
+              for i in range(numRobots)]
     paquetes = [ModuloCaja.crearCaja(dimBoard, zonaDescarga)
                 for _ in range(npaquetes)]
 

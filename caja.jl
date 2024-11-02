@@ -16,8 +16,7 @@ function crearCaja(dimBoard::Float64, zonaDescarga::Float64)
    x = rand() * (max_coord - min_coord) + min_coord
    y = rand() * (max_coord - min_coord) + min_coord
    # Evitar que las cajas se generen en la zona de descarga
-   while x >= -dimBoard && x <= (-dimBoard + 2 * zonaDescarga) &&
-         y >= -dimBoard && y <= (-dimBoard + 2 * zonaDescarga)
+   while y >= dimBoard - zonaDescarga
        x = rand() * (max_coord - min_coord) + min_coord
        y = rand() * (max_coord - min_coord) + min_coord
    end
