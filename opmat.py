@@ -1,3 +1,4 @@
+#opmat
 import numpy as np
 
 class OpMat:
