@@ -11,7 +11,7 @@ from OpenGL.GLU import *
 from opmat import OpMat
 from linea_bresenham import LineaBresenham3D  # Importar la función de Bresenham
 
-# Definición de variables globales
+STACK_TOLERANCE = 1.0
 screen_width = 700
 screen_height = 700
 
@@ -31,62 +31,49 @@ UP_Z = 0.0
 
 dimBoard = 250.0
 zonaDescarga = 50.0
-total_lanes = 5  # Número de carriles
 margin = 20.0    # Margen en unidades
 
 class SimulationState:
-    def __init__(self):
-        self.simulation_id = None
-        self.robots_state = []
-        self.packages_state = []
-        self.api_url = "http://localhost:8000"
-    
-    def initialize_simulation(self, num_robots=5, num_packages=20):
-        try:
-            response = requests.post(
-                f"{self.api_url}/simulation",
-                json={"num_robots": num_robots, "num_packages": num_packages}
-            )
-            response.raise_for_status()
-            data = response.json()
-            self.simulation_id = data["id"]
-            self.robots_state = data["robots"]
-            self.packages_state = data["packages"]
-            print(f"Simulation {self.simulation_id} initialized.")
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to initialize simulation: {e}")
-            self.simulation_id = None
+   def __init__(self):
+       self.simulation_id = None
+       self.robots_state = []
+       self.packages_state = []
+       self.api_url = "http://localhost:8000"
+  
+   def initialize_simulation(self, num_robots=5, num_packages=100):
+      response = requests.post(
+          f"{self.api_url}/simulation",
+          json={"num_robots": num_robots, "num_packages": num_packages}
+      )
+      data = response.json()
+      self.simulation_id = data["id"]
+      self.robots_state = data["robots"]
+      self.packages_state = data["packages"]
 
-        if len(self.robots_state) < num_robots:
-            print(f"Warning: Expected {num_robots} robots, but only {len(self.robots_state)} were initialized.")
-    
-    def update(self):
-        if not self.simulation_id:
-            raise ValueError("Simulation ID not set. Make sure to initialize the simulation first.")
-        
-        try:
-            response = requests.post(f"{self.api_url}/simulation/{self.simulation_id}")
-            response.raise_for_status()
-            data = response.json()
-            self.robots_state = data["robots"]
-            self.packages_state = data["packages"]
-        except requests.exceptions.RequestException as e:
-            print(f"Failed to update simulation: {e}")
-            data = None
-        except json.JSONDecodeError:
-            print("Failed to parse JSON. Response content:", response.content)
-            data = None
-        
-        return data
-    
-    def cleanup(self):
-        if self.simulation_id:
-            try:
-                response = requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
-                response.raise_for_status()
-                print(f"Simulation {self.simulation_id} deleted.")
-            except requests.exceptions.RequestException as e:
-                print(f"Failed to delete simulation: {e}")
+      if len(self.robots_state) < num_robots:
+          print(f"Warning: Expected {num_robots} robots, but only {len(self.robots_state)} were initialized.")
+  
+   def update(self):
+       if not self.simulation_id:
+           raise ValueError("Simulation ID not set. Make sure to initialize the simulation first.")
+      
+       response = requests.post(f"{self.api_url}/simulation/{self.simulation_id}")
+      
+       print("Response content:", response.content)  # Debug: check raw response content
+      
+       try:
+           data = response.json()
+           self.robots_state = data["robots"]
+           self.packages_state = data["packages"]
+       except json.JSONDecodeError:
+           print("Failed to parse JSON. Response content:", response.content)
+           data = None
+      
+       return data
+  
+   def cleanup(self):
+       if self.simulation_id:
+           requests.delete(f"{self.api_url}/simulation/{self.simulation_id}")
 
 def dibujarPlano():
     opmat = OpMat()
@@ -100,34 +87,24 @@ def dibujarPlano():
         (-dimBoard + margin, dimBoard - margin, 0)
     ]
     transformed_vertices = opmat.mult_points(vertices)
-    glColor3f(200/255, 200/255, 200/255)  # Gris claro para el piso
+    glColor3f(200/255, 200/255, 200/255)  # Color gris claro para el piso
     glBegin(GL_QUADS)
     for vertex in transformed_vertices:
         glVertex3f(*vertex)
     glEnd()
     
-    # Dibujar carriles verticales dentro del área de interacción con márgenes usando LineaBresenham3D
-    lane_width = (2 * dimBoard - 2 * margin) / total_lanes  # Ajuste para márgenes
-    glColor3f(1.0, 1.0, 1.0)  # Color blanco para las líneas de los carriles
+    # No dibujar carriles
 
-    for i in range(1, total_lanes):
-        x = -dimBoard + margin + i * lane_width
-        y_start = -dimBoard + margin
-        y_end = dimBoard - margin
-        z = 0.2  # Altura constante para las líneas de carril
-        LineaBresenham3D(x, y_start, z, x, y_end, z)
-    
-    # Dibujar la zona de descarga dentro de los márgenes
+    # Dibujar la zona de descarga con un color base
     dropoff_vertices = [
-        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.5),  # Esquina inferior izquierda
+        (-dimBoard + margin, dimBoard - zonaDescarga - margin, 0.5),  # Esquina inferior izquierda de la zona de descarga
         (dimBoard - margin, dimBoard - zonaDescarga - margin, 0.5),   # Esquina inferior derecha
         (dimBoard - margin, dimBoard - margin, 0.5),                  # Esquina superior derecha
         (-dimBoard + margin, dimBoard - margin, 0.5)                  # Esquina superior izquierda
     ]
     transformed_dropoff_vertices = opmat.mult_points(dropoff_vertices)
-    glColor3f(169/255, 169/255, 169/255)  # Gris oscuro para la zona de descarga
-    
-    # Desactivar la prueba de profundidad temporalmente
+    glColor3f(0.5, 0.5, 0.5)  # Color gris medio para la zona de descarga
+    # Deshabilitar temporalmente el test de profundidad
     glDisable(GL_DEPTH_TEST)
 
     # Dibujar la zona de descarga
@@ -136,7 +113,7 @@ def dibujarPlano():
         glVertex3f(*vertex)
     glEnd()
 
-    # Rehabilitar la prueba de profundidad
+    # Rehabilitar el test de profundidad
     glEnable(GL_DEPTH_TEST)
     
     opmat.pop()
@@ -154,18 +131,18 @@ def dibujar_robot(robot_state):
     opmat.pop()
 
 def dibujar_robot_body(opmat):
-    vertices = [
-        (-40, -20, -15),
-        (40, -20, -15),
-        (40, 20, -15),
-        (-40, 20, -15),
-        (-40, -20, 15),
-        (40, -20, 15),
-        (40, 20, 15),
-        (-40, 20, 15)
-    ]
+   vertices = [
+       (-40, -20, -15),
+       (40, -20, -15),
+       (40, 20, -15),
+       (-40, 20, -15),
+       (-40, -20, 15),
+       (40, -20, 15),
+       (40, 20, 15),
+       (-40, 20, 15)
+   ]
 
-    transformed_vertices = opmat.mult_points(vertices)
+   transformed_vertices = opmat.mult_points(vertices)
 
     edges = [
         (0,1), (1,2), (2,3), (3,0),
@@ -173,44 +150,36 @@ def dibujar_robot_body(opmat):
         (0,4), (1,5), (2,6), (3,7)
     ]
 
-    glColor3f(30/255, 68/255, 168/255)  # Azul para el cuerpo del robot
-
-    for edge in edges:
-        v1 = transformed_vertices[edge[0]]
-        v2 = transformed_vertices[edge[1]]
-        LineaBresenham3D(v1[0], v1[1], v1[2], v2[0], v2[1], v2[2])
+   glColor3f(30/255, 68/255, 168/255)  # Color azul para los robots
+   glBegin(GL_LINES)
+   for edge in edges:
+       for vertex in edge:
+           glVertex3f(*transformed_vertices[vertex])
+   glEnd()
 
 def dibujar_llantas_robot(opmat):
-    posiciones_llantas = [
-        (35, 20, -15),
-        (-35, 20, -15),
-        (35, -20, -15),
-        (-35, -20, -15),
-    ]
+   posiciones_llantas = [
+       (35, 20, -15),
+       (-35, 20, -15),
+       (35, -20, -15),
+       (-35, -20, -15),
+   ]
 
-    for pos in posiciones_llantas:
-        opmat.push()
-        opmat.translate(pos[0], pos[1], pos[2])
-        opmat.rotate(90, 0, 1, 0)
-        glColor3f(52/255, 51/255, 51/255)  # Gris oscuro para las llantas
+   for pos in posiciones_llantas:
+       opmat.push()
+       opmat.translate(pos[0], pos[1], pos[2])
+       opmat.rotate(90, 0, 1, 0)
+       glColor3f(52/255, 51/255, 51/255)  # Color gris oscuro para las llantas
+       glBegin(GL_LINE_LOOP)
+       for i in range(20):
+           theta = 2.0 * np.pi * i / 20
+           x = 10 * np.cos(theta)
+           y = 10 * np.sin(theta)
+           glVertex3f(x, y, 0)
+       glEnd()
+       opmat.pop()
 
-        # Definir los puntos de la llanta
-        points = []
-        for i in range(20):
-            theta = 2.0 * np.pi * i / 20
-            x = 10 * np.cos(theta)
-            y = 10 * np.sin(theta)
-            points.append((x, y, 0))
-
-        # Dibujar líneas entre puntos consecutivos para formar el círculo
-        for i in range(len(points)):
-            v1 = points[i]
-            v2 = points[(i + 1) % len(points)]  # Cerrar el loop
-            LineaBresenham3D(v1[0], v1[1], v1[2], v2[0], v2[1], v2[2])
-
-        opmat.pop()
-
-def dibujar_caja(package_state):
+def dibujar_caja(package_state, color_override=None):
     opmat = OpMat()
     opmat.push()
     posicion = package_state["position"]
@@ -218,10 +187,10 @@ def dibujar_caja(package_state):
     opmat.translate(posicion[0], posicion[1], posicion[2])
     opmat.rotate(np.degrees(angulo), 0, 0, 1)
     opmat.scale(0.2, 0.2, 0.2)
-    dibujar_caja_body(opmat)
+    dibujar_caja_body(opmat, color_override)
     opmat.pop()
 
-def dibujar_caja_body(opmat):
+def dibujar_caja_body(opmat, color_override=None):
     vertices = [
         (-10, -10, -10),
         (10, -10, -10),
@@ -241,17 +210,23 @@ def dibujar_caja_body(opmat):
         (0,4), (1,5), (2,6), (3,7)
     ]
 
-    glColor3f(187/255, 156/255, 110/255)  # Marrón para las cajas
-
+    # Usar color_override si se proporciona; de lo contrario, color por defecto
+    if color_override:
+        glColor3f(*color_override)
+    else:
+        glColor3f(187/255, 156/255, 110/255)  # Color por defecto de las cajas
+    
+    glBegin(GL_LINES)
     for edge in edges:
-        v1 = transformed_vertices[edge[0]]
-        v2 = transformed_vertices[edge[1]]
-        LineaBresenham3D(v1[0], v1[1], v1[2], v2[0], v2[1], v2[2])
+        for vertex in edge:
+            glVertex3f(*transformed_vertices[vertex])
+    glEnd()
 
-def Init(simulation):
-    screen = pygame.display.set_mode(
-        (screen_width, screen_height), DOUBLEBUF | OPENGL)
-    pygame.display.set_caption("OpenGL: Robots")
+def Init(simulation):  # Agregar simulation como parámetro
+   screen = pygame.display.set_mode(
+       (screen_width, screen_height), DOUBLEBUF | OPENGL)
+   pygame.display.set_caption("OpenGL: Robots")
+
 
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -267,23 +242,51 @@ def Init(simulation):
 
     simulation.initialize_simulation()
 
+
 def display(simulation):
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     dibujarPlano()
     
     simulation.update()
-    
+
     for robot_state in simulation.robots_state:
         dibujar_robot(robot_state)
 
-    for package_state in simulation.packages_state:
-        dibujar_caja(package_state)
+    stacks = {}
+    for package in simulation.packages_state:
+        pos = package["position"]
+        x, y = pos[0], pos[1]
+        # Redondear posiciones según una tolerancia para agrupar en pilas
+        stack_key = (round(x / STACK_TOLERANCE) * STACK_TOLERANCE,
+                     round(y / STACK_TOLERANCE) * STACK_TOLERANCE)
+        if stack_key not in stacks:
+            stacks[stack_key] = []
+        stacks[stack_key].append(package)
+
+    # Determinar el estado de las pilas
+    stack_colors = {}
+    for key, packages in stacks.items():
+        if len(packages) >= 5:
+            stack_colors[key] = (1.0, 0.0, 0.0)  # Rojo para pilas llenas
+        elif len(packages) > 0:
+            stack_colors[key] = (0.0, 1.0, 0.0)  # Verde para pilas disponibles
+
+    # Dibujar cajas con color basado en el estado de la pila
+    for key, packages in stacks.items():
+        is_full_stack = len(packages) >= 5
+        for package in packages:
+            if is_full_stack:
+                # Dibujar pilas llenas en rojo
+                dibujar_caja(package, color_override=(1.0, 0.0, 0.0))  # Color rojo
+            else:
+                # Dibujar pilas disponibles en verde
+                dibujar_caja(package, color_override=(0.0, 1.0, 0.0))  # Color verde
 
 def main():
     pygame.init()
     simulation = SimulationState()
     done = False
-    Init(simulation)  # Pasar la simulación a Init
+    Init(simulation)  # Pasar simulation a Init
 
     clock = pygame.time.Clock()
 
@@ -293,13 +296,13 @@ def main():
                 if event.type == pygame.QUIT:
                     done = True
 
-            display(simulation)  # Pasar la simulación a display
-            pygame.display.flip()
-            clock.tick(60)  # 60 FPS para una animación suave
+           display(simulation)  # Pasar simulation a display
+           pygame.display.flip()
+           clock.tick(10)  # Aumentar para suavizar el movimiento
 
     finally:
         simulation.cleanup()
         pygame.quit()
 
 if __name__ == '__main__':
-    main()
+   main()
