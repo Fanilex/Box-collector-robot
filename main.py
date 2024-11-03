@@ -39,7 +39,7 @@ class SimulationState:
        self.packages_state = []
        self.api_url = "http://localhost:8000"
   
-   def initialize_simulation(self, num_robots=5, num_packages=20):
+   def initialize_simulation(self, num_robots=5, num_packages=100):
       response = requests.post(
           f"{self.api_url}/simulation",
           json={"num_robots": num_robots, "num_packages": num_packages}
