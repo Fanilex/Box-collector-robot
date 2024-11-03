@@ -44,7 +44,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
 
     # Generar posición inicial dentro del carril y respetando el margen en Y
     min_coord_y = -dimBoard + margin
-    max_coord_y = dimBoard - zonaDescarga - margin
+    max_coord_y = dimBoard  - margin
     x = rand() * (lane_x_max - lane_x_min) + lane_x_min
     y = rand() * (max_coord_y - min_coord_y) + min_coord_y
     posicion = [x, y, 13.0]
@@ -62,7 +62,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     ancho_zona = (2 * dimBoard - 2 * margin) / total_robots
     x_min_descarga = -dimBoard + margin + (num_robot - 1) * ancho_zona
     x_max_descarga = x_min_descarga + ancho_zona - margin
-    y_min = dimBoard - zonaDescarga - margin
+    y_min = dimBoard  - margin
     y_max = dimBoard - margin
 
     zona_descarga_robot = (x_min_descarga, x_max_descarga, y_min, y_max)
@@ -252,46 +252,60 @@ end
 
 
 function update(robot::Robot, paquetes)
-   try
-       eventHandler!(robot, paquetes)
+    try
+        eventHandler!(robot, paquetes)
 
+        if robot.rotando
+            diferencia = robot.angulo_objetivo - robot.angulo
+            if abs(diferencia) > π
+                diferencia -= sign(diferencia) * 2π
+            end
+            incremento = robot.velocidad_rotacion * sign(diferencia)
+            if abs(diferencia) > abs(incremento)
+                robot.angulo += incremento
+            else
+                robot.angulo = robot.angulo_objetivo
+                robot.rotando = false
+            end
+        else
+            # Movimiento hacia adelante en dirección al ángulo actual
+            delta_x = robot.velocidad * cos(robot.angulo) * 0.1
+            delta_y = robot.velocidad * sin(robot.angulo) * 0.1
+            nueva_x = robot.posicion[1] + delta_x
+            nueva_y = robot.posicion[2] + delta_y
 
-       if robot.rotando
-           diferencia = robot.angulo_objetivo - robot.angulo
-           if abs(diferencia) > π
-               diferencia -= sign(diferencia) * 2π
-           end
-           incremento = robot.velocidad_rotacion * sign(diferencia)
-           if abs(diferencia) > abs(incremento)
-               robot.angulo += incremento
-           else
-               robot.angulo = robot.angulo_objetivo
-               robot.rotando = false
-           end
-       elseif robot.estado_robot == "moviendo_a_caja" || robot.estado_robot == "yendo_a_descarga"
-           # Move forward in the direction of the current angle
-           delta_x = robot.velocidad * cos(robot.angulo) * 0.1
-           delta_y = robot.velocidad * sin(robot.angulo) * 0.1
-           robot.posicion[1] += delta_x
-           robot.posicion[2] += delta_y
-           println("Moving towards target. Current position: ", robot.posicion)  # Debug
-       end
+            # Verificar límites del carril y ajustar posición si es necesario
+            if nueva_x < robot.lane_x_min
+                nueva_x = robot.lane_x_min
+                robot.angulo = π - robot.angulo  # Girar 180 grados
+            elseif nueva_x > robot.lane_x_max
+                nueva_x = robot.lane_x_max
+                robot.angulo = π - robot.angulo  # Girar 180 grados
+            end
 
+            # Verificar límites en Y y ajustar posición si es necesario
+            if nueva_y < -robot.dimBoard + robot.margin
+                nueva_y = -robot.dimBoard + robot.margin
+            elseif nueva_y > robot.dimBoard  - robot.margin
+                nueva_y = robot.dimBoard  - robot.margin
+            end
 
-       updatePuntoCarga!(robot)
+            robot.posicion[1] = nueva_x
+            robot.posicion[2] = nueva_y
+            println("Moving towards target. Current position: ", robot.posicion)  # Debug
+        end
 
+        updatePuntoCarga!(robot)
 
-       if robot.caja_recogida != nothing
-           Main.ModuloCaja.setPos(robot.caja_recogida, robot.puntoCarga, robot.angulo)
-       end
+        if robot.caja_recogida != nothing
+            Main.ModuloCaja.setPos(robot.caja_recogida, robot.puntoCarga, robot.angulo)
+        end
 
-
-   catch e
-       println("Error in update: ", e)
-       println("Stacktrace: ", Base.stacktrace())
-   end
+    catch e
+        println("Error in update: ", e)
+        println("Stacktrace: ", Base.stacktrace())
+    end
 end
-
 
 # Funciones de acceso (getters)
 function get_estado_robot(robot::Robot)
