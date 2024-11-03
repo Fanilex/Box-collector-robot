@@ -11,7 +11,7 @@ from OpenGL.GL import *
 from OpenGL.GLU import *
 from opmat import OpMat
 
-
+STACK_TOLERANCE = 1.0
 screen_width = 700
 screen_height = 700
 
@@ -204,48 +204,51 @@ def dibujar_llantas_robot(opmat):
        opmat.pop()
 
 
-def dibujar_caja(package_state):
-   opmat = OpMat()
-   opmat.push()
-   posicion = package_state["position"]
-   angulo = package_state["angle"]
-   opmat.translate(posicion[0], posicion[1], posicion[2])
-   opmat.rotate(np.degrees(angulo), 0, 0, 1)
-   opmat.scale(0.2, 0.2, 0.2)
-   dibujar_caja_body(opmat)
-   opmat.pop()
+def check_full_stack(stack_index, robot_state):
+    return robot_state["num_boxes_in_stacks"][stack_index] >= 5
 
+def dibujar_caja(package_state, color_override=None):
+    opmat = OpMat()
+    opmat.push()
+    posicion = package_state["position"]
+    angulo = package_state["angle"]
+    opmat.translate(posicion[0], posicion[1], posicion[2])
+    opmat.rotate(np.degrees(angulo), 0, 0, 1)
+    opmat.scale(0.2, 0.2, 0.2)
+    dibujar_caja_body(opmat, color_override)
+    opmat.pop()
 
-def dibujar_caja_body(opmat):
-   vertices = [
-       (-10, -10, -10),
-       (10, -10, -10),
-       (10, 10, -10),
-       (-10, 10, -10),
-       (-10, -10, 10),
-       (10, -10, 10),
-       (10, 10, 10),
-       (-10, 10, 10)
-   ]
+def dibujar_caja_body(opmat, color_override=None):
+    vertices = [
+        (-10, -10, -10),
+        (10, -10, -10),
+        (10, 10, -10),
+        (-10, 10, -10),
+        (-10, -10, 10),
+        (10, -10, 10),
+        (10, 10, 10),
+        (-10, 10, 10)
+    ]
 
+    transformed_vertices = opmat.mult_points(vertices)
 
-   transformed_vertices = opmat.mult_points(vertices)
+    edges = [
+        (0,1), (1,2), (2,3), (3,0),
+        (4,5), (5,6), (6,7), (7,4),
+        (0,4), (1,5), (2,6), (3,7)
+    ]
 
-
-   edges = [
-       (0,1), (1,2), (2,3), (3,0),
-       (4,5), (5,6), (6,7), (7,4),
-       (0,4), (1,5), (2,6), (3,7)
-   ]
-
-
-   glColor3f(187/255, 156/255, 110/255)
-   glBegin(GL_LINES)
-   for edge in edges:
-       for vertex in edge:
-           glVertex3f(*transformed_vertices[vertex])
-   glEnd()
-
+    # Use color_override if provided; otherwise, default color
+    if color_override:
+        glColor3f(*color_override)
+    else:
+        glColor3f(187/255, 156/255, 110/255)  # Default box color
+    
+    glBegin(GL_LINES)
+    for edge in edges:
+        for vertex in edge:
+            glVertex3f(*transformed_vertices[vertex])
+    glEnd()
 
 def Init(simulation):  # Add simulation as parameter
    screen = pygame.display.set_mode(
@@ -270,22 +273,39 @@ def Init(simulation):  # Add simulation as parameter
    simulation.initialize_simulation()
 
 
-def display(simulation):  # Add simulation as parameter
-   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
-   dibujarPlano()
-  
-   simulation.update()
-  
-   for robot_state in simulation.robots_state:
-      dibujar_robot(robot_state)
+def display(simulation):
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
+    dibujarPlano()
+    
+    simulation.update()
 
+    for robot_state in simulation.robots_state:
+        dibujar_robot(robot_state)
 
-   for package_state in simulation.packages_state:
-      if package_state["state"] != "soltada":
-          dibujar_caja(package_state)
-      else:
-          # Only stack boxes that have been "soltada" in the discharge zone
-          dibujar_caja(package_state)
+    stacks = {}
+    for package in simulation.packages_state:
+        pos = package["position"]
+        x, y = pos[0], pos[1]
+        # Round positions based on a tolerance to group into stacks
+        stack_key = (round(x / STACK_TOLERANCE) * STACK_TOLERANCE,
+                     round(y / STACK_TOLERANCE) * STACK_TOLERANCE)
+        if stack_key not in stacks:
+            stacks[stack_key] = []
+        stacks[stack_key].append(package)
+
+    # Determine which stacks are full
+    full_stacks_keys = {key for key, packages in stacks.items() if len(packages) >= 5}
+
+    # Draw packages
+    for key, packages in stacks.items():
+        is_full_stack = key in full_stacks_keys
+        for package in packages:
+            if is_full_stack:
+                # Draw full stacks in red
+                dibujar_caja(package, color_override=(1.0, 0.0, 0.0))  # Red color
+            else:
+                # Default color for other packages
+                dibujar_caja(package)
 
 
 def main():
@@ -307,7 +327,7 @@ def main():
 
            display(simulation)  # Pass simulation to display
            pygame.display.flip()
-           clock.tick(500)  # Increase to smooth out movement
+           clock.tick(50)  # Increase to smooth out movement
 
     finally:
        simulation.cleanup()
