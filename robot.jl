@@ -32,13 +32,16 @@ mutable struct Robot
     margin::Float64
     # Sección de almacenamiento asignada
     seccionAlmacen::Int
+    # Contador de movimientos
+    movement_count::Int
 end
 
 function to_dict(robot::Robot)
     return Dict(
         "position" => robot.posicion,
         "angle" => robot.angulo,
-        "state" => robot.estado_robot
+        "state" => robot.estado_robot,
+        "movement_count" => robot.movement_count  # Incluir contador de movimientos
     )
 end
 
@@ -98,7 +101,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     robot = Robot(dimBoard, zonaDescarga, posicion, estado_robot, contador, puntoCarga, caja_recogida,
                   angulo, rotando, angulo_objetivo, velocidad_rotacion, velocidad,
                   zona_descarga_robot, posiciones_pilas, indice_pila_actual, altura_pila_actual,
-                  margin, seccionAlmacen)
+                  margin, seccionAlmacen, 0)
     updatePuntoCarga!(robot)
     return robot
 end
@@ -277,9 +280,11 @@ function update(robot::Robot, paquetes)
             incremento = robot.velocidad_rotacion * sign(diferencia)
             if abs(diferencia) > abs(incremento)
                 robot.angulo += incremento
+                robot.movement_count += 1
             else
                 robot.angulo = robot.angulo_objetivo
                 robot.rotando = false
+                robot.movement_count += 1
             end
             robot.angulo = wrap(robot.angulo)
         elseif robot.estado_robot in ["moviendo_a_caja", "yendo_a_descarga"]
@@ -299,12 +304,14 @@ function update(robot::Robot, paquetes)
                 robot.angulo_objetivo = rand(-pi/4:0.01:pi/4)  # Dirección estándar hacia arriba
                 robot.rotando = true
                 robot.estado_robot = "rotando_a_caja"
+                robot.movement_count += 1
             elseif nueva_x > robot.dimBoard - robot.margin - buffer
                 nueva_x = robot.dimBoard - robot.margin - buffer
                 # Ajustar angulo_objetivo para no apuntar hacia la pared
                 robot.angulo_objetivo = rand(3*pi/4:0.01:5*pi/4)  # Dirección estándar hacia arriba
                 robot.rotando = true
                 robot.estado_robot = "rotando_a_caja"
+                robot.movement_count += 1
             end
 
             # Verificar límites en Y y ajustar si es necesario
@@ -314,17 +321,20 @@ function update(robot::Robot, paquetes)
                 robot.angulo_objetivo = rand(pi/4:0.01:3*pi/4)  # Dirección estándar hacia arriba
                 robot.rotando = true
                 robot.estado_robot = "rotando_a_caja"
+                robot.movement_count += 1
             elseif nueva_y > robot.dimBoard - robot.margin
                 nueva_y = robot.dimBoard - robot.margin
                 # Ajustar angulo_objetivo para no apuntar hacia la pared
                 robot.angulo_objetivo = rand(-3*pi/4:0.01:-pi/4)  # Dirección estándar hacia arriba
                 robot.rotando = true
                 robot.estado_robot = "rotando_a_caja"
+                robot.movement_count += 1
             end 
 
             robot.posicion[1] = nueva_x
             robot.posicion[2] = nueva_y
             println("Moving towards target. Current position: ", robot.posicion)  # Debug
+            robot.movement_count += 1
         end
 
         updatePuntoCarga!(robot)
