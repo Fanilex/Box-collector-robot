@@ -9,8 +9,6 @@ export get_estado_robot, get_posicion, get_angulo, asignar_zona_descarga
 using Random
 using LinearAlgebra
 
-
-
 mutable struct Robot
     dimBoard::Float64
     zonaDescarga::Float64
@@ -35,7 +33,6 @@ mutable struct Robot
     # Campo para margen
     margin::Float64
 end
-
 
 function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_robot::Int, total_robots::Int, total_lanes::Int, margin::Float64)
     # Calcular el ancho de cada carril
