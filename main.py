@@ -299,7 +299,7 @@ def main():
 
            display(simulation)  # Pasar simulation a display
            pygame.display.flip()
-           clock.tick(50)  # Aumentar para suavizar el movimiento
+           clock.tick(10)  # Aumentar para suavizar el movimiento
 
     finally:
        simulation.cleanup()

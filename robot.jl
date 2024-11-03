@@ -30,6 +30,8 @@ mutable struct Robot
     altura_pila_actual::Int
     # Campo para margen
     margin::Float64
+    # Sección de almacenamiento asignada
+    seccionAlmacen::Int
 end
 
 function to_dict(robot::Robot)
@@ -61,10 +63,16 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     velocidad_rotacion = pi / 4  # Velocidad de rotación (radians por frame)
     velocidad = 200  # Velocidad de movimiento
 
-    # Asignar zona de descarga individual
-    ancho_zona = (2 * dimBoard - 2 * margin) / total_robots
-    x_min_descarga = -dimBoard + margin + (num_robot - 1) * ancho_zona
-    x_max_descarga = x_min_descarga + ancho_zona - margin
+    # Asignar sección de almacenamiento única a cada robot
+    seccionAlmacen = num_robot  # Asignar una sección por robot
+
+    zona_ancho = (2 * dimBoard) / total_robots
+    recuadro_ancho = zona_ancho / 1  # Cada robot tiene su propia sección
+    target_x = -dimBoard + (seccionAlmacen - 1) * zona_ancho + zona_ancho / 2
+
+    # Definir zona de descarga individual para el robot
+    x_min_descarga = target_x - zona_ancho / 4
+    x_max_descarga = target_x + zona_ancho / 4
     y_min_descarga = dimBoard - zonaDescarga - margin
     y_max_descarga = dimBoard - margin
 
@@ -74,8 +82,9 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     posiciones_pilas = []
     num_pilas = 5  # Número máximo de pilas en la zona
     for i in 1:num_pilas
-        x_pila = x_min_descarga + (i - 0.5) * (ancho_zona / num_pilas)
-        y_pila = y_min_descarga + zonaDescarga / 2
+        # Distribuir pilas horizontalmente dentro de la zona de descarga
+        x_pila = x_min_descarga + (i - 0.5) * ((x_max_descarga - x_min_descarga) / num_pilas)
+        y_pila = y_min_descarga + zonaDescarga / 2  # Centralizar en Y
         push!(posiciones_pilas, [x_pila, y_pila])
     end
     indice_pila_actual = 1
@@ -84,7 +93,7 @@ function crearRobot(dimBoard::Float64, zonaDescarga::Float64, vel::Float64, num_
     robot = Robot(dimBoard, zonaDescarga, posicion, estado_robot, contador, puntoCarga, caja_recogida,
                   angulo, rotando, angulo_objetivo, velocidad_rotacion, velocidad,
                   zona_descarga_robot, posiciones_pilas, indice_pila_actual, altura_pila_actual,
-                  margin)
+                  margin, seccionAlmacen)
     updatePuntoCarga!(robot)
     return robot
 end
@@ -124,7 +133,11 @@ function soltar(robot::Robot)
             robot.altura_pila_actual = 0
             robot.indice_pila_actual += 1
             if robot.indice_pila_actual > length(robot.posiciones_pilas)
-                robot.indice_pila_actual = 1
+                # Crear una nueva pila a la derecha si todas las pilas están llenas
+                new_pila_x = last(robot.posiciones_pilas)[1] + 20.0  # Incremento horizontal
+                new_pila_y = last(robot.posiciones_pilas)[2]
+                push!(robot.posiciones_pilas, [new_pila_x, new_pila_y])
+                robot.indice_pila_actual = length(robot.posiciones_pilas)
             end
         end
         # Reiniciar el estado del robot para buscar otra caja
@@ -210,8 +223,10 @@ function eventHandler!(robot::Robot, paquetes)
             end
 
         elseif robot.estado_robot == "caja_recogida"
-            # Moverse hacia la zona de descarga
-            robot.angulo_objetivo = atan(dropoff_y - robot.posicion[2], dropoff_x - robot.posicion[1])
+            # Moverse hacia la zona de descarga asignada
+            # Ya se ha asignado la zona de descarga única en 'crearRobot'
+            robot.angulo_objetivo = atan(robot.zona_descarga_robot[4] - robot.posicion[2], 
+                                        robot.zona_descarga_robot[1] + (robot.zona_descarga_robot[2] - robot.zona_descarga_robot[1])/2 - robot.posicion[1])
             robot.rotando = true
             robot.estado_robot = "rotando_a_descarga"
             println("Heading to drop-off zone. Target angle: ", robot.angulo_objetivo)  # Debug
@@ -222,10 +237,11 @@ function eventHandler!(robot::Robot, paquetes)
             end
 
         elseif robot.estado_robot == "yendo_a_descarga"
-            # Verificar la distancia a la zona de descarga
-            dist_to_dropoff = norm([robot.posicion[1] - dropoff_x, robot.posicion[2] - dropoff_y])
-            println("Distance to drop-off zone: ", dist_to_dropoff)  # Debug
-            if dist_to_dropoff < 5.0
+            # Verificar si el robot ha llegado a su zona de descarga
+            x, y = robot.posicion[1], robot.posicion[2]
+            x_min, x_max, y_min, y_max = robot.zona_descarga_robot
+
+            if x >= x_min && x <= x_max && y >= y_min && y <= y_max
                 robot.estado_robot = "soltando_caja"
             end
 
@@ -293,8 +309,8 @@ function update(robot::Robot, paquetes)
                 robot.angulo_objetivo = pi/2  # Dirección estándar hacia arriba
                 robot.rotando = true
                 robot.estado_robot = "rotando_a_caja"
-            elseif nueva_y > robot.dimBoard -  robot.margin 
-                nueva_y = robot.dimBoard -  robot.margin 
+            elseif nueva_y > robot.dimBoard - robot.margin
+                nueva_y = robot.dimBoard - robot.margin
                 # Ajustar angulo_objetivo para no apuntar hacia la pared
                 robot.angulo_objetivo = pi/2  # Dirección estándar hacia arriba
                 robot.rotando = true
